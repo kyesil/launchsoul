@@ -4,7 +4,7 @@ A companion for the home screen your phone already has. It does not replace the 
 
 The app has no internet permission. The interface is Turkish only for now.
 
-**Status:** test version, used daily on an Honor Magic 8 Pro (MagicOS 11), also tested on a Galaxy S21 (One UI 7) and a Pixel emulator (Android 16). Not on any store.
+**Status:** test version, used daily on an Honor Magic 8 Pro (MagicOS 11), also tested on a Galaxy S21 (One UI 7) and a Pixel emulator (Android 16). Not on any store; APKs are on the [releases page](https://github.com/kyesil/launchsoul/releases).
 
 ## Features
 
@@ -62,7 +62,7 @@ JDK 17 or newer and the Android SDK (platform 37).
 ./gradlew :app:testDebugUnitTest
 ```
 
-The APK is in `app/build/outputs/apk/release/`. It is signed with your local debug key, so an APK built elsewhere cannot update it.
+The APK is in `app/build/outputs/apk/release/`. Without a `keystore.properties` it is signed with your local debug key, so it cannot update an APK from the releases page.
 
 ## Code
 

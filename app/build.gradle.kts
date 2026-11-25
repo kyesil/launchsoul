@@ -1,6 +1,13 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+// Not in the repository: storeFile, storePassword, keyAlias, keyPassword.
+val keystore = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { f ->
+    Properties().apply { f.inputStream().use { load(it) } }
 }
 
 android {
@@ -11,14 +18,23 @@ android {
         applicationId = "dev.yesil.launchsoul"
         minSdk = 29
         targetSdk = 37
-        versionCode = 16
-        versionName = "0.2.11"
+        versionCode = 17
+        versionName = "0.3.0"
+    }
+
+    signingConfigs {
+        if (keystore != null) create("release") {
+            storeFile = file(keystore.getProperty("storeFile"))
+            storePassword = keystore.getProperty("storePassword")
+            keyAlias = keystore.getProperty("keyAlias")
+            keyPassword = keystore.getProperty("keyPassword")
+        }
     }
 
     buildTypes {
         release {
-            // Signed with the debug key, so anyone can build and install it. A store release needs its own key.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without the release key it is signed with the debug key, so anyone can build and install it.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard.pro")
