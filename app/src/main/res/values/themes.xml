@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Settings" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FF101216</item>
+        <item name="android:colorAccent">#FF8FB8FF</item>
+    </style>
+    <style name="Theme.Search" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.5</item>
+    </style>
+</resources>
