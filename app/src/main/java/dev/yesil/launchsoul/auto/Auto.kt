@@ -1,5 +1,7 @@
 package dev.yesil.launchsoul.auto
 
+import dev.yesil.launchsoul.tx
+
 import android.Manifest
 import android.app.AlarmManager
 import android.app.AutomaticZenRule
@@ -92,7 +94,7 @@ class AutoReceiver : BroadcastReceiver() {
                     else -> { // boot, update, clock or time zone change, exact alarm permission
                         Reminders.rescheduleAll(app)
                         SleepTimer.restore(app)
-                        HomeDnd.evaluate(app, "yeniden başlatma")
+                        HomeDnd.evaluate(app, tx(R.string.why_restart))
                         Listener.rebind(app)
                     }
                 }
@@ -142,18 +144,18 @@ object Reminders {
         app.history.markFired(id)
         val late = System.currentTimeMillis() - r.at
         dev.yesil.launchsoul.system.DebugLog.log("reminder", "late ${late / 1000}s")
-        app.history.log("Hatırlatıcı: ${r.text.take(60)} (gecikme ${late / 1000} sn)")
+        app.history.log(tx(R.string.log_reminder_late, r.text.take(60), late / 1000))
         val n = Notification.Builder(app, App.CH_REMINDER)
             .setSmallIcon(R.drawable.ic_bell)
             .setContentTitle(r.text)
-            .setContentText(if (late > 90_000) "${clock(r.at)} içindi, geç kaldı" else clock(r.at))
+            .setContentText(if (late > 90_000) tx(R.string.reminder_was_due, clock(r.at)) else clock(r.at))
             .setStyle(Notification.BigTextStyle().bigText(r.text))
             .setCategory(Notification.CATEGORY_REMINDER)
             .setWhen(r.at)
             .setShowWhen(true)
             .setContentIntent(openSettings(app, "reminders"))
-            .addAction(Notification.Action.Builder(null, "Tamam", pending(app, A_REMINDER_DONE, id)).build())
-            .addAction(Notification.Action.Builder(null, "10 dk sonra", pending(app, A_REMINDER_LATER, id)).build())
+            .addAction(Notification.Action.Builder(null, tx(R.string.ok), pending(app, A_REMINDER_DONE, id)).build())
+            .addAction(Notification.Action.Builder(null, tx(R.string.in_10_min), pending(app, A_REMINDER_LATER, id)).build())
             .build()
         app.getSystemService(NotificationManager::class.java).notify(id.toInt(), n)
     }
@@ -178,16 +180,16 @@ object SleepTimer {
         wakeAt(app, end, pending(app, A_TIMER))
         val n = Notification.Builder(app, App.CH_TIMER)
             .setSmallIcon(R.drawable.ic_moon)
-            .setContentTitle("Uyku zamanlayıcı")
-            .setContentText("Süre dolunca ses kısılıp durdurulacak")
+            .setContentTitle(tx(R.string.timer))
+            .setContentText(tx(R.string.timer_running))
             .setOngoing(true)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
             .setWhen(end)
             .setShowWhen(true)
             .setContentIntent(openSettings(app, "timer"))
-            .addAction(Notification.Action.Builder(null, "+15 dk", pending(app, A_TIMER_MORE)).build())
-            .addAction(Notification.Action.Builder(null, "İptal", pending(app, A_TIMER_STOP)).build())
+            .addAction(Notification.Action.Builder(null, tx(R.string.plus_15_min), pending(app, A_TIMER_MORE)).build())
+            .addAction(Notification.Action.Builder(null, tx(R.string.cancel), pending(app, A_TIMER_STOP)).build())
             .build()
         app.getSystemService(NotificationManager::class.java).notify(TIMER_ID, n)
     }
@@ -211,7 +213,7 @@ object SleepTimer {
         cancel(app)
         val am = app.getSystemService(AudioManager::class.java)
         if (!am.isMusicActive) {
-            app.history.log("Uyku zamanlayıcı: çalan bir şey yoktu")
+            app.history.log(tx(R.string.log_timer_nothing))
             return
         }
         val start = am.getStreamVolume(AudioManager.STREAM_MUSIC)
@@ -229,8 +231,8 @@ object SleepTimer {
         }
         Thread.sleep(300)
         app.history.log(
-            "Uyku zamanlayıcı bitti (gecikme ${(System.currentTimeMillis() - planned) / 1000} sn), " +
-                if (am.isMusicActive) "ses DURDURULAMADI" else "ses durdu",
+            tx(R.string.log_timer_done, (System.currentTimeMillis() - planned) / 1000) +
+                if (am.isMusicActive) tx(R.string.log_timer_not_stopped) else tx(R.string.log_timer_stopped),
         )
     }
 
@@ -270,13 +272,13 @@ object HomeDnd {
                 override fun onLinkPropertiesChanged(n: Network, lp: LinkProperties) {
                     wifi = lp
                     app.prefs.dndLostAt = 0
-                    app.io.execute { runCatching { evaluate(app, "Wi-Fi bağlandı") } }
+                    app.io.execute { runCatching { evaluate(app, tx(R.string.why_wifi_on)) } }
                 }
 
                 override fun onLost(n: Network) {
                     wifi = null
                     app.prefs.dndLostAt = System.currentTimeMillis()
-                    app.io.execute { runCatching { evaluate(app, "Wi-Fi koptu") } }
+                    app.io.execute { runCatching { evaluate(app, tx(R.string.why_wifi_lost)) } }
                 }
             })
         }
@@ -286,10 +288,10 @@ object HomeDnd {
         }
         app.registerReceiver(object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
-                app.io.execute { runCatching { evaluate(app, "şarj değişti") } }
+                app.io.execute { runCatching { evaluate(app, tx(R.string.why_power)) } }
             }
         }, f)
-        app.io.execute { runCatching { if (app.prefs.dndOn) evaluate(app, "başlangıç") } }
+        app.io.execute { runCatching { if (app.prefs.dndOn) evaluate(app, tx(R.string.why_start)) } }
     }
 
     /** Gateway, DNS and local prefixes of the current Wi-Fi: no location permission needed, but not unique. */
@@ -348,18 +350,18 @@ object HomeDnd {
         val power = !p.dndCharging || charging(app)
         val on = p.dndOn && night && home && power
         val reason = when {
-            !p.dndOn -> "kural kapalı"
-            !night -> "gece saati değil"
-            !home -> if (print == null) "Wi-Fi yok" else "ev Wi-Fi'ı değil"
-            !power -> "şarjda değil"
-            else -> "evde, gece"
+            !p.dndOn -> tx(R.string.dnd_r_off)
+            !night -> tx(R.string.dnd_r_day)
+            !home -> if (print == null) tx(R.string.dnd_r_no_wifi) else tx(R.string.dnd_r_not_home)
+            !power -> tx(R.string.dnd_r_not_charging)
+            else -> tx(R.string.dnd_r_home_night)
         }
         val nm = app.getSystemService(NotificationManager::class.java)
         val id = ensureRule(app, nm) ?: return
         nm.setAutomaticZenRuleState(
             id, Condition(condition, reason, if (on) Condition.STATE_TRUE else Condition.STATE_FALSE),
         )
-        if (on != active || first) app.history.log("Uyku modu ${if (on) "AÇIK" else "kapalı"}: $reason ($why)")
+        if (on != active || first) app.history.log(tx(if (on) R.string.log_dnd_on else R.string.log_dnd_off, reason, why))
         dev.yesil.launchsoul.system.DebugLog.log("dnd", "on=$on night=$night home=$home power=$power wifi=${print != null} name=${name != null}/${p.dndNames.size} ($why)")
         active = on
         first = false
@@ -379,13 +381,13 @@ object HomeDnd {
             val policy = ZenPolicy.Builder().allowAlarms(true).allowReminders(true).allowMedia(true)
                 .allowCalls(ZenPolicy.PEOPLE_TYPE_STARRED).allowRepeatCallers(true).build()
             val rule = AutomaticZenRule(
-                "Evdeyken uyku", null, ComponentName(app, SettingsActivity::class.java), condition, policy,
+                tx(R.string.dnd_rule_name), null, ComponentName(app, SettingsActivity::class.java), condition, policy,
                 NotificationManager.INTERRUPTION_FILTER_PRIORITY, true,
             )
             nm.addAutomaticZenRule(rule).also { app.prefs.dndRuleId = it }
         }
     } catch (e: Exception) {
-        app.history.log("Uyku kuralı kurulamadı: ${e.message}")
+        app.history.log(tx(R.string.log_dnd_rule_failed, e.message))
         null
     }
 

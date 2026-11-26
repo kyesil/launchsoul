@@ -48,6 +48,14 @@ class CoreTest {
         assertNull(p("iphone 15"))
         assertNull(p("yarın"))
         assertNull(p("bugün 9 süt al"))
+        assertEquals(ParsedReminder(LocalDateTime.of(2026, 11, 26, 9, 0), "buy milk"), p("tomorrow 9 buy milk"))
+        assertEquals(ParsedReminder(LocalDateTime.of(2026, 11, 25, 10, 20), "turn off the tea"), p("in 20 min turn off the tea"))
+        assertEquals(ParsedReminder(LocalDateTime.of(2026, 11, 27, 14, 30), "meeting"), p("friday 14:30 meeting"))
+        assertEquals(ParsedReminder(LocalDateTime.of(2026, 11, 25, 20, 0), "call mum"), p("at 8pm call mum"))
+        assertEquals(LocalDateTime.of(2026, 11, 25, 20, 0), p("8 pm call mum")!!.at)
+        assertEquals(LocalDateTime.of(2026, 11, 25, 19, 0), p("evening call mum")!!.at)
+        assertEquals(LocalDateTime.of(2026, 11, 25, 12, 0), p("in 2 hours lunch")!!.at)
+        assertNull(p("iphone 15 pro"))
     }
 
     @Test fun ranges() {

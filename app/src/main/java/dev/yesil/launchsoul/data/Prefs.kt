@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.data
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
@@ -121,16 +124,16 @@ class Prefs(ctx: Context) {
         const val ACT_RECENTS = "recents"
         const val ACT_APP = "app:"
 
-        val actionNames = linkedMapOf(
-            ACT_NONE to "Hiçbiri",
-            ACT_NOTIFICATIONS to "Bildirimler",
-            ACT_QUICK to "Denetim menüsü",
-            ACT_SEARCH to "Arama",
-            ACT_PHONE_SEARCH to "Telefonun kendi araması",
-            ACT_GOOGLE to "Google (Discover)",
-            ACT_DIALER to "Tuş takımı",
-            ACT_LOCK to "Ekranı kilitle",
-            ACT_RECENTS to "Son uygulamalar",
+        val actionNames get() = linkedMapOf(
+            ACT_NONE to tx(R.string.act_none),
+            ACT_NOTIFICATIONS to tx(R.string.act_notifications),
+            ACT_QUICK to tx(R.string.act_quick),
+            ACT_SEARCH to tx(R.string.act_search),
+            ACT_PHONE_SEARCH to tx(R.string.act_phone_search),
+            ACT_GOOGLE to tx(R.string.act_google),
+            ACT_DIALER to tx(R.string.act_dialer),
+            ACT_LOCK to tx(R.string.act_lock),
+            ACT_RECENTS to tx(R.string.act_recents),
         )
     }
 }

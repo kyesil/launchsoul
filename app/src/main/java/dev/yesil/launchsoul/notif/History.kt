@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.notif
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
@@ -14,8 +17,10 @@ class Entry(
 )
 
 /** How a notification ended, as far as Android tells us. */
-enum class Ending(val label: String) {
-    OPEN("Duruyor"), SEEN("Açıldı ya da silindi"), APP("Uygulama kaldırdı"), MISSED("Kaçırılmış olabilir")
+enum class Ending(private val id: Int) {
+    OPEN(R.string.end_open), SEEN(R.string.end_seen), APP(R.string.end_app), MISSED(R.string.end_missed);
+
+    val label get() = tx(id)
 }
 
 fun Entry.ending(): Ending = when (reason) {
@@ -37,12 +42,12 @@ object RuleAction {
     const val VIBRATE = "vibrate"
     const val OPEN_LATER = "remind"
 
-    val names = linkedMapOf(
-        DISMISS to "Bildirimi sil",
-        SNOOZE to "Ertele (dakika)",
-        SPEAK to "Sesli oku",
-        VIBRATE to "Uzun titret",
-        OPEN_LATER to "Sonra yeniden hatırlat (dakika)",
+    val names get() = linkedMapOf(
+        DISMISS to tx(R.string.rule_dismiss),
+        SNOOZE to tx(R.string.rule_snooze),
+        SPEAK to tx(R.string.rule_speak),
+        VIBRATE to tx(R.string.rule_vibrate),
+        OPEN_LATER to tx(R.string.rule_remind),
     )
 }
 

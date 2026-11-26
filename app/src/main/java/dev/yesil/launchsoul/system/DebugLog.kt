@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.system
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -109,9 +112,9 @@ object DebugLog {
                 val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM, uri)
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 send.clipData = android.content.ClipData.newRawUri("", uri)
-                Actions.start(ctx, Intent.createChooser(send, "Hata günlüğünü paylaş").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                Actions.start(ctx, Intent.createChooser(send, tx(R.string.share_log)).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
             } catch (e: Exception) {
-                Actions.toast(ctx, "Günlük hazırlanamadı: ${e.message}")
+                Actions.toast(ctx, tx(R.string.log_failed_x, e.message))
             }
         }
     }

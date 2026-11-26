@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.system
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -47,13 +50,13 @@ class Finder(private val service: SoulAccessibility) {
             rewind(launchers)
             val r = pages(label, launchers, false) ?: run {
                 if (root(launchers) == null) return@launch
-                Actions.toast(service, "Sayfalarda yok, klasörlere bakılıyor…")
+                Actions.toast(service, tx(R.string.find_folders))
                 rewind(launchers)
                 pages(label, launchers, true)
             }
             DebugLog.log("find", "found=${r != null}")
             if (r != null) showRing(r)
-            else if (root(launchers) != null) Actions.toast(service, "“$label” ana ekranda bulunamadı")
+            else if (root(launchers) != null) Actions.toast(service, tx(R.string.not_on_home_x, label))
         }.also { it.invokeOnCompletion { service.app.main.post(done) } }
     }
 

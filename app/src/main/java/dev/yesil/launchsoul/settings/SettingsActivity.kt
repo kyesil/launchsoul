@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.settings
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -183,7 +186,7 @@ fun Choice(title: String, names: Map<String, String>, get: () -> String, set: (S
             Text("▾", color = MaterialTheme.colorScheme.onSurfaceVariant)
             DropdownMenu(open, { open = false }) {
                 for ((k, n) in names) DropdownMenuItem({ Text(n) }, { pick(k) })
-                if (Prefs.ACT_NONE in names) DropdownMenuItem({ Text("Bir uygulama…") }, {
+                if (Prefs.ACT_NONE in names) DropdownMenuItem({ Text(tx(R.string.an_app)) }, {
                     open = false
                     apps = true
                 })
@@ -217,32 +220,32 @@ fun Small(text: String, onClick: () -> Unit) = TextButton(onClick) { Text(text) 
 @Composable
 private fun MainScreen(go: (String) -> Unit) = Page("Better Launch Soul") {
     Card {
-        Line("Ana ekran hareketleri", "Ana ekranda sağdan/soldan aşağı, yukarı") { go("gestures") }
-        Line("Uyku modu otomasyonu", "Gece, ev Wi-Fi'ında Rahatsız Etme") { go("dnd") }
-        Line("İzinler", "Erişilebilirlik, Rahatsız Etme, pil") { go("permissions") }
+        Line(tx(R.string.home_gestures), tx(R.string.home_gestures_sub)) { go("gestures") }
+        Line(tx(R.string.dnd_title), tx(R.string.dnd_sub)) { go("dnd") }
+        Line(tx(R.string.permissions), tx(R.string.permissions_sub)) { go("permissions") }
     }
-    Card("Diğer") {
-        Line("Kenar hareketleri", "Her yerde: ana ekranda ve uygulamalarda kilitle / ara") { go("edge") }
-        Line("Arama", "Nerelerde aransın") { go("search") }
-        Line("Bildirim geçmişi", "Ara, süz, kaçırılanlar") { go("history") }
-        Line("Bildirim kuralları", "Şu gelirse şunu yap") { go("rules") }
-        Line("Hatırlatıcılar", "Aramaya “yarın 9 süt al” yaz") { go("reminders") }
-        Line("Uyku zamanlayıcı", "Süre dolunca sesi kısıp durdur") { go("timer") }
-        Line("Günlük", "Otomasyon ne yaptı, neden yapmadı") { go("log") }
+    Card(tx(R.string.other)) {
+        Line(tx(R.string.edge_gestures), tx(R.string.edge_sub)) { go("edge") }
+        Line(tx(R.string.act_search), tx(R.string.search_sub)) { go("search") }
+        Line(tx(R.string.notification_history), tx(R.string.history_sub)) { go("history") }
+        Line(tx(R.string.notification_rules), tx(R.string.rules_sub)) { go("rules") }
+        Line(tx(R.string.reminders), tx(R.string.reminders_sub)) { go("reminders") }
+        Line(tx(R.string.timer), tx(R.string.timer_sub)) { go("timer") }
+        Line(tx(R.string.log), tx(R.string.log_sub)) { go("log") }
     }
-    Card("Sorun bildirme") {
+    Card(tx(R.string.reporting)) {
         val ctx = LocalContext.current
-        Line("Hata günlüğünü paylaş", "Dosyayı istediğin uygulamayla gönder") {
+        Line(tx(R.string.share_log), tx(R.string.share_log_sub)) {
             dev.yesil.launchsoul.system.DebugLog.share(ctx)
         }
-        Toggle("Günlük tut", "Bildirim metni, kişi, arama ve hatırlatıcı içermez; uygulama paket adları olabilir",
+        Toggle(tx(R.string.keep_log), tx(R.string.keep_log_sub),
             { ctx.app.prefs.debugLog }, { ctx.app.prefs.debugLog = it })
-        Line("Günlüğü temizle") {
+        Line(tx(R.string.clear_log)) {
             dev.yesil.launchsoul.system.DebugLog.clear()
-            dev.yesil.launchsoul.system.Actions.toast(ctx, "Temizlendi")
+            dev.yesil.launchsoul.system.Actions.toast(ctx, tx(R.string.cleared))
         }
     }
-    Note("${LocalContext.current.run { packageManager.getPackageInfo(packageName, 0).versionName }} deneme sürümü. İnternet izni yok; her şey bu telefonda kalır.")
+    Note(tx(R.string.test_version_x, LocalContext.current.run { packageManager.getPackageInfo(packageName, 0).versionName }))
 }
 
 @Composable
@@ -257,35 +260,35 @@ private fun GestureScreen(tick: Int) {
         )
         Unit
     }
-    Page("Ana ekran hareketleri") {
+    Page(tx(R.string.home_gestures)) {
         Card {
-            Toggle("Ana ekranda kaydırma", "Telefonun kendi ana ekranının üstünde çalışır", { p.zoneOn }, {
+            Toggle(tx(R.string.home_swipes), tx(R.string.home_swipes_sub), { p.zoneOn }, {
                 p.zoneOn = it
                 on = it
                 if (it && !access) openAccess()
             })
-            if (on && !access) Line("✗ Erişilebilirlik kapalı", "Çalışması için dokunup aç") { openAccess() }
+            if (on && !access) Line(tx(R.string.a11y_off_x), tx(R.string.tap_to_turn_on_needed)) { openAccess() }
         }
-        Card("Hareketler") {
-            Choice("Soldan aşağı", Prefs.actionNames, { p.gestureDownLeft }, { p.gestureDownLeft = it })
-            Choice("Sağdan aşağı", Prefs.actionNames, { p.gestureDownRight }, { p.gestureDownRight = it })
-            Choice("Yukarı", Prefs.actionNames, { p.gestureUp }, { p.gestureUp = it })
-            Choice("Alt alana çift dokunuş", Prefs.actionNames, { p.gestureDoubleTap }, { p.gestureDoubleTap = it })
+        Card(tx(R.string.gestures)) {
+            Choice(tx(R.string.down_left), Prefs.actionNames, { p.gestureDownLeft }, { p.gestureDownLeft = it })
+            Choice(tx(R.string.down_right), Prefs.actionNames, { p.gestureDownRight }, { p.gestureDownRight = it })
+            Choice(tx(R.string.up), Prefs.actionNames, { p.gestureUp }, { p.gestureUp = it })
+            Choice(tx(R.string.double_bottom), Prefs.actionNames, { p.gestureDoubleTap }, { p.gestureDoubleTap = it })
         }
-        Card("Alanlar") {
-            Number("Yan alanların genişliği", 0..200, { p.zoneSide }, { p.zoneSide = it }) { if (it == 0) "kapalı" else "$it dp" }
-            Number("Alt alanın yüksekliği", 0..480, { p.zoneBottom }, { p.zoneBottom = it }) { if (it == 0) "kapalı" else "$it dp" }
-            Number("Uzun basınca alanların kapalı kaldığı süre", 1..30, { p.zonePause }, { p.zonePause = it }) { "$it sn" }
-            Toggle("Alanları göster", "Ayarlarken mavi boyar", { p.zoneVisible }, { p.zoneVisible = it })
+        Card(tx(R.string.areas)) {
+            Number(tx(R.string.side_width), 0..200, { p.zoneSide }, { p.zoneSide = it }) { if (it == 0) tx(R.string.off) else "$it dp" }
+            Number(tx(R.string.bottom_height), 0..480, { p.zoneBottom }, { p.zoneBottom = it }) { if (it == 0) tx(R.string.off) else "$it dp" }
+            Number(tx(R.string.pause_after_hold), 1..30, { p.zonePause }, { p.zonePause = it }) { tx(R.string.x_s, it) }
+            Toggle(tx(R.string.show_areas), tx(R.string.show_areas_sub), { p.zoneVisible }, { p.zoneVisible = it })
         }
-        Note("Aşağı ve yukarı kaydırma yan ve alt alanlarda çalışır; aşağıda ekranın sol ya da sağ yarısı seçer. Alt alan en çok ekranın ortasına kadar çıkar. Çift dokunuş boş yerde çalışır; simgeye dokunuş beklemez. Alan büyüdükçe hareket daha kolay yakalanır; ama alanın içinde sayfa parmağı izlemez. Simge taşımak için uzun bas, titreyince bırak, sonra yeniden uzun basıp sürükle: alanlar son dokunuştan seçtiğin süre sonra geri gelir.")
-        Card("Panelleri açma yolu") {
+        Note(tx(R.string.areas_note))
+        Card(tx(R.string.panel_path)) {
             Choice(
-                "Yol", mapOf("auto" to "Otomatik", "a11y" to "Erişilebilirlik hizmeti"), { p.panelPath },
+                tx(R.string.way), mapOf("auto" to tx(R.string.automatic), "a11y" to tx(R.string.a11y_service)), { p.panelPath },
                 { p.panelPath = it },
             )
         }
-        Note("Panel açılmıyorsa yolu “Erişilebilirlik hizmeti” yap. Hizmet öndeki pencerenin adına bakar, ana ekranda dokunduğun simgeyi bulur; başka uygulamaların içeriğini okumaz.")
+        Note(tx(R.string.panel_note))
     }
 }
 
@@ -293,21 +296,21 @@ private fun GestureScreen(tick: Int) {
 private fun EdgeScreen(tick: Int, go: (String) -> Unit) {
     val p = LocalContext.current.app.prefs
     val on = dev.yesil.launchsoul.system.SoulAccessibility.instance != null
-    Page("Kenar hareketleri") {
-        if (!on) Card { Line("Erişilebilirlik hizmeti kapalı", "Kenar hareketleri için açılmalı") { go("permissions") } }
+    Page(tx(R.string.edge_gestures)) {
+        if (!on) Card { Line(tx(R.string.a11y_service_off), tx(R.string.edge_needs_a11y)) { go("permissions") } }
         Card {
-            Toggle("Açık", "Ana ekranda ve her uygulamada, kenarda ince tutamak", { p.edgeEnabled }, { p.edgeEnabled = it })
-            Toggle("Sol kenar", "", { p.edgeLeft }, { p.edgeLeft = it })
-            Toggle("Sağ kenar", "", { p.edgeRight }, { p.edgeRight = it })
-            Choice("Kenardan aşağı", Prefs.actionNames, { p.edgeDown }, { p.edgeDown = it })
-            Choice("Kenardan yukarı", Prefs.actionNames, { p.edgeUp }, { p.edgeUp = it })
+            Toggle(tx(R.string.on), tx(R.string.edge_on_sub), { p.edgeEnabled }, { p.edgeEnabled = it })
+            Toggle(tx(R.string.left_edge), "", { p.edgeLeft }, { p.edgeLeft = it })
+            Toggle(tx(R.string.right_edge), "", { p.edgeRight }, { p.edgeRight = it })
+            Choice(tx(R.string.edge_down), Prefs.actionNames, { p.edgeDown }, { p.edgeDown = it })
+            Choice(tx(R.string.edge_up), Prefs.actionNames, { p.edgeUp }, { p.edgeUp = it })
         }
-        Card("Tutamak") {
-            Toggle("Çizgiyi göster", "", { p.edgeVisible }, { p.edgeVisible = it })
-            Number("Genişlik", 8..60, { p.edgeWidth }, { p.edgeWidth = it }) { "$it dp" }
-            Number("Uzunluk", 80..1000, { p.edgeHeight }, { p.edgeHeight = it }) { if (it >= 900) "tam ekran" else "$it dp" }
-            Number("Konum", 0..100, { p.edgePosition }, { p.edgePosition = it }) { "%$it" }
+        Card(tx(R.string.handle)) {
+            Toggle(tx(R.string.show_line), "", { p.edgeVisible }, { p.edgeVisible = it })
+            Number(tx(R.string.width), 8..60, { p.edgeWidth }, { p.edgeWidth = it }) { "$it dp" }
+            Number(tx(R.string.length), 80..1000, { p.edgeHeight }, { p.edgeHeight = it }) { if (it >= 900) tx(R.string.full_screen) else "$it dp" }
+            Number(tx(R.string.position), 0..100, { p.edgePosition }, { p.edgePosition = it }) { tx(R.string.percent_x, it) }
         }
-        Note("Ana ekranda tutamağın olduğu yerde kenar hareketi, kalan kısımda ana ekran hareketi çalışır. Uzunluk tam ekran olabilir; klavye açılınca tutamak klavyenin üstünde kalır. Tutamağa dokunuş alttaki uygulamaya geçer, ama kenardan dikey kaydırma uygulamaya gitmez. Tutamağın üstünde yatay kaydırma “geri” verir. Kilit ekranında ve yatayda kapanır. Banka uygulamaları erişilebilirlik açıkken uyarabilir.")
+        Note(tx(R.string.edge_note))
     }
 }

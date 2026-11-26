@@ -36,12 +36,12 @@ class App : Application() {
         history = History(this)
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CH_REMINDER, "Hatırlatıcılar", NotificationManager.IMPORTANCE_HIGH).apply {
+            NotificationChannel(CH_REMINDER, tx(R.string.ch_reminders), NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(true)
             },
         )
         nm.createNotificationChannel(
-            NotificationChannel(CH_TIMER, "Uyku zamanlayıcı", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CH_TIMER, tx(R.string.ch_timer), NotificationManager.IMPORTANCE_LOW),
         )
         HomeDnd.init(this)
         io.execute { runCatching { Reminders.rescheduleAll(this) } }
@@ -58,3 +58,7 @@ class App : Application() {
 }
 
 val Context.app: App get() = applicationContext as App
+
+/** A text in the phone's language. */
+fun tx(@androidx.annotation.StringRes id: Int, vararg args: Any?): String =
+    if (args.isEmpty()) App.me.getString(id) else App.me.getString(id, *args)

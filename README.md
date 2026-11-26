@@ -2,7 +2,7 @@
 
 A companion for the home screen your phone already has. It does not replace the launcher: it adds swipe gestures, a fast search and a few automations on top of it.
 
-The app has no internet permission. The interface is Turkish only for now.
+The app has no internet permission. The interface follows the phone's language: Turkish or, for every other language, English.
 
 **Status:** test version, used daily on an Honor Magic 8 Pro (MagicOS 11), also tested on a Galaxy S21 (One UI 7) and a Pixel emulator (Android 16). Not on any store; APKs are on the [releases page](https://github.com/kyesil/launchsoul/releases).
 
@@ -17,7 +17,7 @@ The app has no internet permission. The interface is Turkish only for now.
 
 ### Search
 
-- Apps, contacts, phone settings, sums, reminders and the notification history.
+- Apps, contacts, phone settings, sums, reminders ("tomorrow 9 buy milk", "in 20 min tea") and the notification history.
 - The matching part is bold. When a contact was found by another field, that field is shown.
 - Contacts with photo, call and message buttons; phone or WhatsApp for each.
 - Long press an app and choose Find to see where it is on the home screen.

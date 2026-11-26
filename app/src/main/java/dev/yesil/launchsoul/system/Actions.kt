@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.system
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
@@ -24,11 +27,11 @@ object Actions {
             action == Prefs.ACT_NOTIFICATIONS -> panel(ctx, quick = false)
             action == Prefs.ACT_QUICK -> panel(ctx, quick = true)
             action == Prefs.ACT_SEARCH -> start(ctx, Intent(ctx, SearchActivity::class.java))
-            action == Prefs.ACT_PHONE_SEARCH -> if (!phoneSearch(ctx)) toast(ctx, "Telefonun araması bulunamadı")
+            action == Prefs.ACT_PHONE_SEARCH -> if (!phoneSearch(ctx)) toast(ctx, tx(R.string.no_phone_search))
             action == Prefs.ACT_GOOGLE -> google(ctx)
             action == Prefs.ACT_DIALER -> start(ctx, Intent(Intent.ACTION_DIAL))
-            action == Prefs.ACT_LOCK -> global(ctx, AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "Ekranı kilitlemek")
-            action == Prefs.ACT_RECENTS -> global(ctx, AccessibilityService.GLOBAL_ACTION_RECENTS, "Son uygulamalar")
+            action == Prefs.ACT_LOCK -> global(ctx, AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, tx(R.string.locking))
+            action == Prefs.ACT_RECENTS -> global(ctx, AccessibilityService.GLOBAL_ACTION_RECENTS, tx(R.string.act_recents))
             action.startsWith(Prefs.ACT_APP) -> ctx.app.apps.launch(action.removePrefix(Prefs.ACT_APP))
         }
     }
@@ -44,7 +47,7 @@ object Actions {
         val act = if (quick) AccessibilityService.GLOBAL_ACTION_QUICK_SETTINGS
         else AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS
         if (service != null && service.performGlobalAction(act)) return true
-        toast(ctx, "Panel açılamadı. Ayarlar → İzinler'den erişilebilirliği aç.")
+        toast(ctx, tx(R.string.panel_failed))
         return false
     }
 
@@ -62,7 +65,7 @@ object Actions {
 
     private fun global(ctx: Context, action: Int, what: String) {
         if (SoulAccessibility.instance?.performGlobalAction(action) == true) return
-        toast(ctx, "$what için erişilebilirlik izni gerekli")
+        toast(ctx, tx(R.string.x_needs_a11y, what))
         start(ctx, Intent(ctx, SettingsActivity::class.java).putExtra("screen", "permissions"))
     }
 
@@ -75,7 +78,7 @@ object Actions {
         val i = if (main != null) Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(main.component)
         else ctx.packageManager.getLaunchIntentForPackage(GOOGLE)
         if (i == null) {
-            toast(ctx, "Google uygulaması yok ya da kapalı")
+            toast(ctx, tx(R.string.no_google))
             return
         }
         val o = ActivityOptions.makeCustomAnimation(
@@ -102,7 +105,7 @@ object Actions {
         ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         true
     } catch (e: Exception) {
-        toast(ctx, "Açılamadı")
+        toast(ctx, tx(R.string.could_not_open))
         false
     }
 

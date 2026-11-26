@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.search
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.Manifest
 import android.app.SearchManager
 import android.content.ClipData
@@ -104,32 +107,33 @@ class Results(
     val contacts: List<Person> = emptyList(), val settings: List<Result> = emptyList(), val web: List<Result> = emptyList(),
 )
 
+/** Phone settings that can be searched: the name in the phone's language, words in both languages, the screen. */
 private val settingPages = listOf(
-    "Wi-Fi kablosuz internet" to Settings.ACTION_WIFI_SETTINGS,
-    "Bluetooth" to Settings.ACTION_BLUETOOTH_SETTINGS,
-    "Ses ve titreşim zil" to Settings.ACTION_SOUND_SETTINGS,
-    "Ekran parlaklık" to Settings.ACTION_DISPLAY_SETTINGS,
-    "Pil tasarrufu batarya" to Settings.ACTION_BATTERY_SAVER_SETTINGS,
-    "Konum GPS" to Settings.ACTION_LOCATION_SOURCE_SETTINGS,
-    "Uygulamalar" to Settings.ACTION_APPLICATION_SETTINGS,
-    "Depolama" to Settings.ACTION_INTERNAL_STORAGE_SETTINGS,
-    "Güvenlik parmak izi" to Settings.ACTION_SECURITY_SETTINGS,
-    "Gizlilik" to Settings.ACTION_PRIVACY_SETTINGS,
-    "Erişilebilirlik" to Settings.ACTION_ACCESSIBILITY_SETTINGS,
-    "Tarih ve saat" to Settings.ACTION_DATE_SETTINGS,
-    "Dil klavye" to Settings.ACTION_LOCALE_SETTINGS,
-    "Klavye giriş" to Settings.ACTION_INPUT_METHOD_SETTINGS,
-    "NFC" to Settings.ACTION_NFC_SETTINGS,
-    "Uçak modu" to Settings.ACTION_AIRPLANE_MODE_SETTINGS,
-    "Mobil veri kullanımı" to Settings.ACTION_DATA_USAGE_SETTINGS,
-    "VPN" to Settings.ACTION_VPN_SETTINGS,
-    "Geliştirici seçenekleri" to Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS,
-    "Varsayılan uygulamalar" to Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS,
-    "Bildirim erişimi" to Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS,
-    "Telefon hakkında yazılım" to Settings.ACTION_DEVICE_INFO_SETTINGS,
-    "Hesaplar eşitleme" to Settings.ACTION_SYNC_SETTINGS,
-    "Yayınla ekran yansıtma" to Settings.ACTION_CAST_SETTINGS,
-    "Yazdırma" to Settings.ACTION_PRINT_SETTINGS,
+    Triple(R.string.set_wifi, "wifi wi-fi kablosuz internet wireless", Settings.ACTION_WIFI_SETTINGS),
+    Triple(R.string.set_bluetooth, "bluetooth", Settings.ACTION_BLUETOOTH_SETTINGS),
+    Triple(R.string.set_sound, "ses titreşim zil sound vibration ringtone volume", Settings.ACTION_SOUND_SETTINGS),
+    Triple(R.string.set_display, "ekran parlaklık display brightness", Settings.ACTION_DISPLAY_SETTINGS),
+    Triple(R.string.set_battery, "pil batarya tasarruf battery saver", Settings.ACTION_BATTERY_SAVER_SETTINGS),
+    Triple(R.string.set_location, "konum gps location", Settings.ACTION_LOCATION_SOURCE_SETTINGS),
+    Triple(R.string.set_apps, "uygulamalar apps applications", Settings.ACTION_APPLICATION_SETTINGS),
+    Triple(R.string.set_storage, "depolama storage", Settings.ACTION_INTERNAL_STORAGE_SETTINGS),
+    Triple(R.string.set_security, "güvenlik parmak izi security fingerprint", Settings.ACTION_SECURITY_SETTINGS),
+    Triple(R.string.set_privacy, "gizlilik privacy", Settings.ACTION_PRIVACY_SETTINGS),
+    Triple(R.string.set_a11y, "erişilebilirlik accessibility", Settings.ACTION_ACCESSIBILITY_SETTINGS),
+    Triple(R.string.set_date, "tarih saat date time", Settings.ACTION_DATE_SETTINGS),
+    Triple(R.string.set_language, "dil language", Settings.ACTION_LOCALE_SETTINGS),
+    Triple(R.string.set_keyboard, "klavye giriş keyboard input", Settings.ACTION_INPUT_METHOD_SETTINGS),
+    Triple(R.string.set_nfc, "nfc", Settings.ACTION_NFC_SETTINGS),
+    Triple(R.string.set_airplane, "uçak modu airplane flight", Settings.ACTION_AIRPLANE_MODE_SETTINGS),
+    Triple(R.string.set_data, "mobil veri kullanımı mobile data usage", Settings.ACTION_DATA_USAGE_SETTINGS),
+    Triple(R.string.set_vpn, "vpn", Settings.ACTION_VPN_SETTINGS),
+    Triple(R.string.set_developer, "geliştirici seçenekleri developer options", Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
+    Triple(R.string.set_default_apps, "varsayılan uygulamalar default apps", Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+    Triple(R.string.set_listeners, "bildirim erişimi notification access", Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS),
+    Triple(R.string.set_about, "telefon hakkında yazılım about phone software", Settings.ACTION_DEVICE_INFO_SETTINGS),
+    Triple(R.string.set_accounts, "hesaplar eşitleme accounts sync", Settings.ACTION_SYNC_SETTINGS),
+    Triple(R.string.set_cast, "yayınla ekran yansıtma cast screen mirroring", Settings.ACTION_CAST_SETTINGS),
+    Triple(R.string.set_print, "yazdırma printing print", Settings.ACTION_PRINT_SETTINGS),
 )
 
 /** 4 start of the name, 3 start of a later word, 2 inside the name, 1 something else. */
@@ -154,23 +158,23 @@ private fun find(ctx: Context, raw: String): Results {
     val answers = mutableListOf<Result>()
     calculate(q)?.let {
         val s = BigDecimal(it).setScale(10, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString().replace('.', ',')
-        answers += Result(s, "Hesap – kopyalamak için dokun", "=") { c ->
-            c.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("sonuç", s))
-            Actions.toast(c, "Kopyalandı")
+        answers += Result(s, tx(R.string.calc_copy), "=") { c ->
+            c.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(tx(R.string.calc_clip), s))
+            Actions.toast(c, tx(R.string.copied))
         }
     }
     ReminderParser.parse(q, LocalDateTime.now())?.let { r ->
         val at = r.at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        answers += Result("Hatırlat: ${r.text}", clock(at), "⏰") { c ->
+        answers += Result(tx(R.string.remind_x, r.text), clock(at), "⏰") { c ->
             Reminders.add(c.app, at, r.text)
-            Actions.toast(c, "Kuruldu: ${clock(at)}")
+            Actions.toast(c, tx(R.string.set_for_x, clock(at)))
         }
     }
-    Regex("""^(?:uyku|zamanlayici|timer)\s+(\d{1,3})\s*(?:dk|dakika)?$""").find(f)?.let { m ->
+    Regex("""^(?:uyku|zamanlayici|timer|sleep)\s+(\d{1,3})\s*(?:dk|dakika|min|mins|minutes?)?$""").find(f)?.let { m ->
         val n = m.groupValues[1].toInt().coerceIn(1, 600)
-        answers += Result("Uyku zamanlayıcı: $n dk", "Süre dolunca sesi kısıp durdurur", "☾") { c ->
+        answers += Result(tx(R.string.timer_x_min, n), tx(R.string.timer_explain), "☾") { c ->
             SleepTimer.start(c.app, n)
-            Actions.toast(c, "Uyku zamanlayıcı kuruldu")
+            Actions.toast(c, tx(R.string.timer_set))
         }
     }
 
@@ -190,32 +194,33 @@ private fun find(ctx: Context, raw: String): Results {
         }
     } else emptyList()
 
-    val settings = if (!p.searchSettings || f.length < 2) emptyList() else settingPages.mapNotNull { (n, action) ->
-        val s = fold(n).split(' ').maxOf { w -> matchScore(f, w) }.coerceAtLeast(matchScore(f, fold(n)))
+    val settings = if (!p.searchSettings || f.length < 2) emptyList() else settingPages.mapNotNull { (id, words, action) ->
+        val n = tx(id)
+        val s = fold("$n $words").split(' ').maxOf { w -> matchScore(f, w) }.coerceAtLeast(matchScore(f, fold(n)))
         if (s < 60) return@mapNotNull null
         val i = Intent(action)
         if (ctx.packageManager.resolveActivity(i, 0) == null) return@mapNotNull null
-        s to Result(n, "Telefon ayarı", "⚙") { c -> Actions.start(c, i) }
+        s to Result(n, tx(R.string.phone_setting), "⚙") { c -> Actions.start(c, i) }
     }.sortedByDescending { it.first }.take(4).map { it.second }
 
     val web = if (!p.searchWeb) emptyList() else {
         val e = Uri.encode(q)
         listOf(
-            Result("“$q” – internette ara", "", "G") { c ->
+            Result(tx(R.string.web_search_x, q), "", "G") { c ->
                 if (!Actions.start(c, Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, q))) {
                     Actions.start(c, Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=$e")))
                 }
             },
-            Result("Haritalar'da ara", "", "⌖") { c -> Actions.start(c, Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$e"))) },
-            Result("YouTube'da ara", "", "▶") { c ->
+            Result(tx(R.string.maps_search), "", "⌖") { c -> Actions.start(c, Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=$e"))) },
+            Result(tx(R.string.youtube_search), "", "▶") { c ->
                 Actions.start(c, Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=$e")))
             },
-            Result("Play Store'da ara", "", "▼") { c ->
+            Result(tx(R.string.play_search), "", "▼") { c ->
                 Actions.start(c, Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=$e")))
             },
         )
     }
-    val inNotifications = Result("Bildirimlerde ara", if (p.historyOn) "" else "Bildirim geçmişi kapalı", "🔔") { c ->
+    val inNotifications = Result(tx(R.string.in_notifications), if (p.historyOn) "" else tx(R.string.history_off), "🔔") { c ->
         Actions.start(c, Intent(c, SettingsActivity::class.java).putExtra("screen", "history").putExtra("q", q))
     }
     return Results(answers, apps, contacts, settings, listOf(inNotifications) + web)
@@ -234,15 +239,15 @@ private fun why(ctx: Context, id: Long, f: String): String = try {
         var out = ""
         while (c.moveToNext() && out.isEmpty()) {
             val name = when (c.getString(0)) {
-                ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE -> "Takma ad"
-                ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> "Şirket"
-                ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE -> "E-posta"
-                ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE -> "Not"
-                ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE -> "Yakını"
-                ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE -> "Adres"
-                ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> "Numara"
-                ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> "Ad"
-                else -> "Diğer"
+                ContactsContract.CommonDataKinds.Nickname.CONTENT_ITEM_TYPE -> tx(R.string.f_nickname)
+                ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> tx(R.string.f_company)
+                ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE -> tx(R.string.f_email)
+                ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE -> tx(R.string.f_note)
+                ContactsContract.CommonDataKinds.Relation.CONTENT_ITEM_TYPE -> tx(R.string.f_relation)
+                ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE -> tx(R.string.f_address)
+                ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> tx(R.string.f_number)
+                ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> tx(R.string.f_name)
+                else -> tx(R.string.f_other)
             }
             for (k in 1..4) {
                 val v = c.getString(k)?.replace('\n', ' ') ?: continue
@@ -394,7 +399,7 @@ private fun People(l: List<Person>, q: String, open: (Person) -> Unit, call: (Pe
             Modifier.size(46.dp).clip(RoundedCornerShape(23.dp)).background(Color(0xFF3F7DD8)).clickable { write(p) }, Alignment.Center,
         ) {
             androidx.compose.foundation.Image(
-                androidx.compose.ui.res.painterResource(dev.yesil.launchsoul.R.drawable.ic_message), "Mesaj: ${p.name}",
+                androidx.compose.ui.res.painterResource(dev.yesil.launchsoul.R.drawable.ic_message), tx(R.string.message_x, p.name),
                 Modifier.size(22.dp),
             )
         }
@@ -404,7 +409,7 @@ private fun People(l: List<Person>, q: String, open: (Person) -> Unit, call: (Pe
             Alignment.Center,
         ) {
             androidx.compose.foundation.Image(
-                androidx.compose.ui.res.painterResource(android.R.drawable.sym_action_call), "Ara: ${p.name}", Modifier.size(24.dp),
+                androidx.compose.ui.res.painterResource(android.R.drawable.sym_action_call), tx(R.string.call_x, p.name), Modifier.size(24.dp),
                 colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
             )
         }
@@ -449,7 +454,7 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
         // Without WhatsApp for this contact nothing is called by surprise: the dialer opens.
         val wa = direct && prefs.searchCall == "whatsapp"
         val done = wa && whatsappCall(ctx, p)
-        if (wa && !done) Actions.toast(ctx, "Bu kişide WhatsApp araması yok")
+        if (wa && !done) Actions.toast(ctx, tx(R.string.no_whatsapp_call))
         if (!done) Actions.start(ctx, Intent(if (direct && !wa) Intent.ACTION_CALL else Intent.ACTION_DIAL, Uri.fromParts("tel", p.number, null)))
         close()
     }
@@ -496,20 +501,20 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), list, contentPadding = PaddingValues(16.dp, 12.dp)) {
             if (q.isBlank()) {
                 if (prefs.searchShowFrequent && lists.first.isNotEmpty()) {
-                    item { Head("Sık kullanılanlar") }
+                    item { Head(tx(R.string.most_used)) }
                     item { AppStrip(lists.first, launch) }
                 }
                 if (prefs.searchShowRecentApps && lists.second.isNotEmpty()) {
-                    item { Head("Son kullanılanlar") }
+                    item { Head(tx(R.string.recently_used)) }
                     item { AppStrip(lists.second, launch) }
                 }
                 if (prefs.searchRecentOn && recent.isNotEmpty()) {
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Head("Son aramalar")
+                            Head(tx(R.string.recent_searches))
                             Spacer(Modifier.weight(1f))
                             Text(
-                                "Temizle",
+                                tx(R.string.clear),
                                 Modifier.clip(RoundedCornerShape(12.dp)).clickable {
                                     recent = emptyList()
                                     prefs.searchRecent = ""
@@ -546,16 +551,16 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
                 })
                 for (people in listOf(peopleFirst, !peopleFirst)) {
                     if (people && res.contacts.isNotEmpty()) {
-                        item { Head("Kişiler") }
+                        item { Head(tx(R.string.contacts)) }
                         item { People(res.contacts, q, person, call, write) }
                     }
                     if (!people && res.apps.isNotEmpty()) {
-                        item { Head("Uygulamalar") }
+                        item { Head(tx(R.string.apps)) }
                         item { AppGrid(res.apps, q, launch) }
                     }
                 }
-                section("Ayarlar", res.settings, go, q)
-                section("Başka yerde ara", res.web, go)
+                section(tx(R.string.settings), res.settings, go, q)
+                section(tx(R.string.search_elsewhere), res.web, go)
             }
         }
         Row(
@@ -564,7 +569,7 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.weight(1f)) {
-                if (q.isEmpty()) Text("Ara, hesapla, hatırlat", color = Color(0xFF9AA2B0), fontSize = 16.sp)
+                if (q.isEmpty()) Text(tx(R.string.search_hint), color = Color(0xFF9AA2B0), fontSize = 16.sp)
                 BasicTextField(
                     q, { q = it },
                     Modifier.fillMaxWidth().focusRequester(focus),
@@ -667,10 +672,10 @@ private fun AppCell(a: AppInfo, q: String, launch: (AppInfo) -> Unit, modifier: 
             overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
         )
         DropdownMenu(menu, { menu = false }) {
-            DropdownMenuItem({ Text("Bul (ana ekranda göster)") }, {
+            DropdownMenuItem({ Text(tx(R.string.find_on_home)) }, {
                 menu = false
                 val s = dev.yesil.launchsoul.system.SoulAccessibility.instance
-                if (s == null) Actions.toast(ctx, "Bunun için erişilebilirlik açık olmalı") else {
+                if (s == null) Actions.toast(ctx, tx(R.string.needs_a11y)) else {
                     s.find(a.label)
                     // Nothing may lie under the search that opens now.
                     var c: Context? = ctx
@@ -678,19 +683,19 @@ private fun AppCell(a: AppInfo, q: String, launch: (AppInfo) -> Unit, modifier: 
                     (c as? android.app.Activity)?.finish()
                 }
             })
-            DropdownMenuItem({ Text("Aç") }, {
+            DropdownMenuItem({ Text(tx(R.string.open)) }, {
                 menu = false
                 launch(a)
             })
-            DropdownMenuItem({ Text("Uygulama bilgisi") }, {
+            DropdownMenuItem({ Text(tx(R.string.app_info)) }, {
                 menu = false
                 ctx.app.apps.details(a.key)
             })
-            DropdownMenuItem({ Text("Kaldır") }, {
+            DropdownMenuItem({ Text(tx(R.string.uninstall)) }, {
                 menu = false
                 ctx.app.apps.uninstall(ctx, a.key)
             })
-            DropdownMenuItem({ Text("Aramada gizle") }, {
+            DropdownMenuItem({ Text(tx(R.string.hide_in_search)) }, {
                 menu = false
                 ctx.app.prefs.hidden = ctx.app.prefs.hidden + a.key
             })

@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.data
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -76,7 +79,7 @@ class AppRepo(private val app: App) {
                 out += AppInfo(key, a.label?.toString() ?: a.name, a.componentName, u, a)
             }
         }
-        val c = Collator.getInstance(Locale.forLanguageTag("tr"))
+        val c = Collator.getInstance(Locale.getDefault())
         out.sortWith { a, b -> c.compare(a.label, b.label) }
         list = out
         byKey = out.associateBy { it.key }
@@ -92,7 +95,7 @@ class AppRepo(private val app: App) {
     fun launch(key: String, bounds: Rect? = null, opts: Bundle? = null): Boolean {
         val a = byKey[key]
         if (a == null) {
-            Toast.makeText(app, "Uygulama bulunamadı", Toast.LENGTH_SHORT).show()
+            Toast.makeText(app, tx(R.string.app_not_found), Toast.LENGTH_SHORT).show()
             return false
         }
         return try {
@@ -101,7 +104,7 @@ class AppRepo(private val app: App) {
             true
         } catch (e: Exception) {
             dev.yesil.launchsoul.system.DebugLog.log("launch", key, e)
-            Toast.makeText(app, "Açılamadı: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(app, tx(R.string.could_not_open_x, e.message), Toast.LENGTH_LONG).show()
             false
         }
     }

@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.settings
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.Manifest
 import android.app.TimePickerDialog
 import android.content.ComponentName
@@ -115,46 +118,46 @@ fun PermissionScreen(tick: Int) {
     fun row(key: String, title: String, why: String, run: () -> Unit) {
         val ok = state[key] == true
         Line(title, why, {
-            Text(if (ok) "Açık" else "Aç", color = if (ok) Color(0xFF7ED492) else MaterialTheme.colorScheme.primary)
+            Text(if (ok) tx(R.string.on) else tx(R.string.turn_on), color = if (ok) Color(0xFF7ED492) else MaterialTheme.colorScheme.primary)
         }, run)
     }
-    Page("İzinler") {
-        Note("Hepsi isteğe bağlı. Vermediğin izin yalnızca o özelliği kapatır.")
-        Card("Temel") {
-            row("a11y", "Erişilebilirlik", "Kaydırma ve kenar hareketleri, kilitleme. Ekran içeriğini okumaz.") {
+    Page(tx(R.string.permissions)) {
+        Note(tx(R.string.perm_note))
+        Card(tx(R.string.basics)) {
+            row("a11y", tx(R.string.accessibility), tx(R.string.perm_a11y_why)) {
                 Actions.start(ctx, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
-            row("notif", "Bildirim erişimi", "Rozet, bildirim geçmişi, kurallar, medyayı durdurma") {
+            row("notif", tx(R.string.notification_access), tx(R.string.perm_listener_why)) {
                 Actions.start(ctx, Intent(Listener.settingsAction))
             }
         }
-        Card("Otomasyon") {
-            row("post", "Bildirim gösterme", "Hatırlatıcılar ve uyku zamanlayıcı") {
+        Card(tx(R.string.automation)) {
+            row("post", tx(R.string.show_notifications), tx(R.string.perm_post_why)) {
                 if (Build.VERSION.SDK_INT >= 33 && !canNotify(ctx)) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else Actions.start(
                     ctx, Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName),
                 )
             }
-            row("exact", "Alarmlar ve hatırlatıcılar", "Hatırlatıcının tam zamanında çalması") {
+            row("exact", tx(R.string.alarms_reminders), tx(R.string.perm_exact_why)) {
                 if (Build.VERSION.SDK_INT >= 31) Actions.start(
                     ctx, Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${ctx.packageName}".toUri()),
                 )
             }
-            row("dnd", "Rahatsız Etme erişimi", "Uyku modu otomasyonu") {
+            row("dnd", tx(R.string.dnd_access), tx(R.string.dnd_title)) {
                 Actions.start(ctx, Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             }
-            row("contacts", "Kişiler", "Aramada kişi bulma") { ask.launch(Manifest.permission.READ_CONTACTS) }
+            row("contacts", tx(R.string.contacts), tx(R.string.perm_contacts_why)) { ask.launch(Manifest.permission.READ_CONTACTS) }
         }
-        Card("Arka planda kalma") {
-            row("battery", "Pil kısıtlaması yok", "Hatırlatıcı ve geçmiş kesilmesin") {
+        Card(tx(R.string.background)) {
+            row("battery", tx(R.string.no_battery_limit), tx(R.string.perm_battery_why)) {
                 Actions.start(ctx, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             }
-            Line("Honor: “Elle yönet”", "Uygulama başlatma → Better Launch Soul → otomatik yönetimi kapat, üç anahtarı aç") {
+            Line(tx(R.string.honor_manual), tx(R.string.honor_manual_how)) {
                 batteryScreen(ctx)
             }
         }
-        Card("Sorun olursa") {
-            Line("Uygulama bilgisi", "Bir izin griyse: sağ üstteki ⋮ → “Kısıtlı ayarlara izin ver”") { details(ctx) }
+        Card(tx(R.string.if_trouble)) {
+            Line(tx(R.string.app_info), tx(R.string.restricted_hint)) { details(ctx) }
         }
     }
 }
@@ -168,35 +171,35 @@ fun SearchSettings(tick: Int) {
         p.searchContacts = it
         again++
     }
-    Page("Arama") {
+    Page(tx(R.string.act_search)) {
         Card {
-            Toggle("Telefon ayarları", "", { p.searchSettings }, { p.searchSettings = it })
+            Toggle(tx(R.string.phone_settings), "", { p.searchSettings }, { p.searchSettings = it })
             androidx.compose.runtime.key(again) {
-                Toggle("Kişiler", "Kişi izni ister", { p.searchContacts }, {
+                Toggle(tx(R.string.contacts), tx(R.string.needs_contacts), { p.searchContacts }, {
                     if (it && !hasPermission(ctx, Manifest.permission.READ_CONTACTS)) ask.launch(Manifest.permission.READ_CONTACTS)
                     else p.searchContacts = it
                 })
             }
             Line(
-                "Son ve sık kullanılanlar", if (remember(tick) { ctx.app.apps.usageAllowed() }) "Telefondaki kullanıma göre"
-                else "Yalnızca aramadan açtıklarına göre; telefondaki kullanıma göre olsun diye dokun",
+                tx(R.string.recent_and_most), if (remember(tick) { ctx.app.apps.usageAllowed() }) tx(R.string.by_phone_usage)
+                else tx(R.string.by_search_only),
             ) { Actions.start(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
-            Choice("Arama düğmesi", mapOf("phone" to "Telefon", "whatsapp" to "WhatsApp"), { p.searchCall }, { p.searchCall = it })
-            Choice("Mesaj düğmesi", mapOf("whatsapp" to "WhatsApp", "sms" to "SMS"), { p.searchMessage }, { p.searchMessage = it })
-            Toggle("Sık kullanılanları göster", "Aramaya başlamadan önce, yana kaydırılır", { p.searchShowFrequent }, { p.searchShowFrequent = it })
-            Toggle("Son kullanılanları göster", "", { p.searchShowRecentApps }, { p.searchShowRecentApps = it })
-            Toggle("Son aramaları göster", "Yalnızca bu telefonda saklanır", { p.searchRecentOn }, {
+            Choice(tx(R.string.call_button), mapOf("phone" to tx(R.string.phone), "whatsapp" to "WhatsApp"), { p.searchCall }, { p.searchCall = it })
+            Choice(tx(R.string.message_button), mapOf("whatsapp" to "WhatsApp", "sms" to "SMS"), { p.searchMessage }, { p.searchMessage = it })
+            Toggle(tx(R.string.show_most_used), tx(R.string.before_typing), { p.searchShowFrequent }, { p.searchShowFrequent = it })
+            Toggle(tx(R.string.show_recently_used), "", { p.searchShowRecentApps }, { p.searchShowRecentApps = it })
+            Toggle(tx(R.string.show_recent_searches), tx(R.string.only_this_phone), { p.searchRecentOn }, {
                 p.searchRecentOn = it
                 if (!it) p.searchRecent = ""
             })
-            if (p.hidden.isNotEmpty()) Line("Gizlenen uygulamaları geri getir", "${p.hidden.size} uygulama") {
+            if (p.hidden.isNotEmpty()) Line(tx(R.string.unhide_apps), tx(R.string.hidden_count, p.hidden.size)) {
                 p.hidden = emptySet()
-                Actions.toast(ctx, "Geri geldi")
+                Actions.toast(ctx, tx(R.string.back_again))
             }
-            Toggle("İnternet, Haritalar, YouTube, Play düğmeleri", "", { p.searchWeb }, { p.searchWeb = it })
+            Toggle(tx(R.string.web_buttons), "", { p.searchWeb }, { p.searchWeb = it })
         }
-        Note("Arama telefonda yapılır. Yazdığın, ancak “internette ara” gibi bir satıra dokunursan başka uygulamaya gider.")
-        Note("Örnekler: 12,5*4 · yarın 9 süt al · 20 dk sonra çayı kapat · cuma 14:30 toplantı · uyku 45")
+        Note(tx(R.string.search_note))
+        Note(tx(R.string.search_examples))
     }
 }
 
@@ -215,20 +218,20 @@ fun HistoryScreen(tick: Int, start: String, go: (String) -> Unit) {
     val gaps = load(tick) { app.history.gaps() }.orEmpty()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp, 8.dp)) {
         item {
-            Text("Bildirim geçmişi", Modifier.padding(4.dp, 20.dp, 4.dp, 12.dp), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(tx(R.string.notification_history), Modifier.padding(4.dp, 20.dp, 4.dp, 12.dp), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
             if (!app.prefs.historyOn) Card {
-                Line("Geçmiş kapalı", "Açmak için dokun. Banka ve mesaj içeriği de saklanır; yalnızca bu telefonda.") { go("historyset") }
+                Line(tx(R.string.history_is_off), tx(R.string.history_off_tap)) { go("historyset") }
             } else Row {
-                Small("Ayarlar") { go("historyset") }
-                Small("Yenile") { again++ }
+                Small(tx(R.string.settings)) { go("historyset") }
+                Small(tx(R.string.refresh)) { again++ }
             }
-            OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), label = { Text("Ara") }, singleLine = true)
+            OutlinedTextField(q, { q = it }, Modifier.fillMaxWidth(), label = { Text(tx(R.string.search_field)) }, singleLine = true)
             Spacer(Modifier.height(6.dp))
             Chips(
                 listOf(
-                    "Hepsi" to { missed = false },
-                    "Kaçırılanlar" to { missed = true },
-                    (pkg?.let { app.apps.labelOf(it) } ?: "Uygulama ▾") to { if (pkg != null) pkg = null else menu = true },
+                    tx(R.string.all) to { missed = false },
+                    tx(R.string.missed) to { missed = true },
+                    (pkg?.let { app.apps.labelOf(it) } ?: tx(R.string.app_filter)) to { if (pkg != null) pkg = null else menu = true },
                 ),
             ) { if (it == 0) !missed else if (it == 1) missed else pkg != null }
             DropdownMenu(menu, { menu = false }) {
@@ -237,8 +240,8 @@ fun HistoryScreen(tick: Int, start: String, go: (String) -> Unit) {
                     menu = false
                 })
             }
-            if (gaps.isNotEmpty()) Note("Son kesinti: ${clock(gaps.first().first)} – ${clock(gaps.first().second)}. Arada gelip silinenler kaydedilemedi.")
-            if (list.isEmpty()) Note(if (app.prefs.historyOn) "Kayıt yok." else "")
+            if (gaps.isNotEmpty()) Note(tx(R.string.last_gap, clock(gaps.first().first), clock(gaps.first().second)))
+            if (list.isEmpty()) Note(if (app.prefs.historyOn) tx(R.string.no_entries) else "")
         }
         items(list, key = { it.id }) { e ->
             EntryRow(app, e, open == e.id, { open = if (open == e.id) null else e.id }, {
@@ -248,7 +251,7 @@ fun HistoryScreen(tick: Int, start: String, go: (String) -> Unit) {
                 }
             }, {
                 app.prefs.historyExcluded = app.prefs.historyExcluded + e.pkg
-                Actions.toast(ctx, "Bu uygulama artık kaydedilmeyecek")
+                Actions.toast(ctx, tx(R.string.app_not_saved_now))
             })
         }
     }
@@ -280,9 +283,9 @@ private fun EntryRow(app: App, e: Entry, open: Boolean, flip: () -> Unit, del: (
                 color = if (end == Ending.MISSED) Color(0xFFFFB36B) else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (open) Row {
-                if (k != null) Small("Uygulamayı aç") { app.apps.launch(k) }
-                Small("Sil", del)
-                Small("Bu uygulamayı kaydetme", exclude)
+                if (k != null) Small(tx(R.string.open_app)) { app.apps.launch(k) }
+                Small(tx(R.string.delete), del)
+                Small(tx(R.string.dont_save_app), exclude)
             }
         }
     }
@@ -295,24 +298,24 @@ fun HistorySettings(tick: Int, go: (String) -> Unit) {
     val p = app.prefs
     var again by remember { mutableIntStateOf(0) }
     val n = load(tick, again) { app.history.count() } ?: 0
-    Page("Geçmiş ayarları") {
+    Page(tx(R.string.history_settings)) {
         Card {
-            Toggle("Bildirim geçmişi", if (Listener.allowed(ctx)) "$n kayıt" else "Önce bildirim erişimi ver", { p.historyOn }, {
+            Toggle(tx(R.string.notification_history), if (Listener.allowed(ctx)) tx(R.string.entries_x, n) else tx(R.string.give_listener_first), { p.historyOn }, {
                 p.historyOn = it
                 if (it && !Listener.allowed(ctx)) Actions.start(ctx, Intent(Listener.settingsAction))
             })
-            Number("Saklama süresi", 7..365, { p.historyDays }, { p.historyDays = it }) { "$it gün" }
+            Number(tx(R.string.keep_for), 7..365, { p.historyDays }, { p.historyDays = it }) { tx(R.string.days_x, it) }
         }
         val ex = p.historyExcluded
-        if (ex.isNotEmpty()) Card("Kaydedilmeyen uygulamalar") {
-            for (e in ex) Line(app.apps.labelOf(e), "Yeniden kaydetmek için dokun") {
+        if (ex.isNotEmpty()) Card(tx(R.string.not_saved_apps)) {
+            for (e in ex) Line(app.apps.labelOf(e), tx(R.string.tap_to_save_again)) {
                 p.historyExcluded = p.historyExcluded - e
                 again++
             }
         }
         Card {
             var sure by remember { mutableStateOf(false) }
-            Line(if (sure) "Emin misin? Geri alınamaz – dokun ve sil" else "Tüm geçmişi sil") {
+            Line(if (sure) tx(R.string.sure_delete_all) else tx(R.string.delete_all_history)) {
                 if (!sure) sure = true else {
                     sure = false
                     app.db.execute {
@@ -322,7 +325,7 @@ fun HistorySettings(tick: Int, go: (String) -> Unit) {
                 }
             }
         }
-        Note("Android, tek kullanımlık kod içeren bildirimleri gizleyebilir. Kayıt, izin verildiği andan başlar; yedeklemeye girmez.")
+        Note(tx(R.string.history_note))
     }
 }
 
@@ -356,21 +359,21 @@ fun RulesScreen(tick: Int) {
         })
         return
     }
-    Page("Bildirim kuralları") {
+    Page(tx(R.string.notification_rules)) {
         Card {
-            Toggle("Kurallar çalışsın", if (Listener.allowed(ctx)) "" else "Bildirim erişimi gerekli", { app.prefs.rulesOn }, {
+            Toggle(tx(R.string.rules_run), if (Listener.allowed(ctx)) "" else tx(R.string.needs_listener), { app.prefs.rulesOn }, {
                 app.prefs.rulesOn = it
                 if (it && !Listener.allowed(ctx)) Actions.start(ctx, Intent(Listener.settingsAction))
             })
         }
         if (rules.isNotEmpty()) Card {
             for (r in rules) Line(
-                (if (r.pkg.isEmpty()) "Her uygulama" else app.apps.labelOf(r.pkg)) + (if (r.contains.isEmpty()) "" else " · “${r.contains}”"),
-                "${RuleAction.names[r.action]} ${r.arg}" + (if (r.dryRun) " · yalnızca dene" else "") + (if (r.on) "" else " · kapalı"),
+                (if (r.pkg.isEmpty()) tx(R.string.every_app) else app.apps.labelOf(r.pkg)) + (if (r.contains.isEmpty()) "" else " · “${r.contains}”"),
+                "${RuleAction.names[r.action]} ${r.arg}" + (if (r.dryRun) tx(R.string.test_only_tag) else "") + (if (r.on) "" else tx(R.string.off_tag)),
             ) { edit = r }
         }
-        Big("Kural ekle") { edit = Rule(0, "", "", RuleAction.DISMISS, "30", dryRun = true, on = true) }
-        Note("Yeni kural “yalnızca dene” ile başlar: ne yapacağını Günlük'e yazar, yapmaz. Bildirim önce ses çıkarabilir, sonra silinir.")
+        Big(tx(R.string.add_rule)) { edit = Rule(0, "", "", RuleAction.DISMISS, "30", dryRun = true, on = true) }
+        Note(tx(R.string.rules_note))
     }
 }
 
@@ -384,11 +387,11 @@ private fun RuleEditor(r: Rule, save: (Rule) -> Unit, delete: (() -> Unit)?) {
     var dry by remember { mutableStateOf(r.dryRun) }
     var on by remember { mutableStateOf(r.on) }
     var menu by remember { mutableStateOf(false) }
-    Page(if (r.id == 0L) "Yeni kural" else "Kural") {
-        Card("Ne zaman") {
-            Line("Uygulama", if (pkg.isEmpty()) "Her uygulama" else app.apps.labelOf(pkg), {
+    Page(if (r.id == 0L) tx(R.string.new_rule) else tx(R.string.rule)) {
+        Card(tx(R.string.rule_when)) {
+            Line(tx(R.string.app), if (pkg.isEmpty()) tx(R.string.every_app) else app.apps.labelOf(pkg), {
                 DropdownMenu(menu, { menu = false }) {
-                    DropdownMenuItem({ Text("Her uygulama") }, {
+                    DropdownMenuItem({ Text(tx(R.string.every_app)) }, {
                         pkg = ""
                         menu = false
                     })
@@ -400,21 +403,21 @@ private fun RuleEditor(r: Rule, save: (Rule) -> Unit, delete: (() -> Unit)?) {
             }) { menu = true }
             OutlinedTextField(
                 contains, { contains = it }, Modifier.fillMaxWidth().padding(18.dp, 8.dp),
-                label = { Text("İçinde geçen söz (boş = hepsi)") }, singleLine = true,
+                label = { Text(tx(R.string.contains_word)) }, singleLine = true,
             )
         }
-        Card("Ne yapılsın") {
-            Choice("Eylem", RuleAction.names, { action }, { action = it })
+        Card(tx(R.string.then_do)) {
+            Choice(tx(R.string.action), RuleAction.names, { action }, { action = it })
             if (action == RuleAction.SNOOZE || action == RuleAction.OPEN_LATER) OutlinedTextField(
                 arg, { s -> arg = s.filter { it.isDigit() }.take(4) }, Modifier.fillMaxWidth().padding(18.dp, 8.dp),
-                label = { Text("Dakika") }, singleLine = true,
+                label = { Text(tx(R.string.minutes)) }, singleLine = true,
             )
-            Toggle("Yalnızca dene", "Yapma, günlüğe yaz", { dry }, { dry = it })
-            Toggle("Açık", "", { on }, { on = it })
+            Toggle(tx(R.string.test_only), tx(R.string.dont_do_log), { dry }, { dry = it })
+            Toggle(tx(R.string.on), "", { on }, { on = it })
         }
-        if (pkg.isEmpty() && contains.isBlank()) Note("Uygulama ya da söz seç: boş kural her bildirime uygulanır.")
-        else Big("Kaydet") { save(Rule(r.id, pkg, contains.trim(), action, arg, dry, on)) }
-        if (delete != null) Small("Kuralı sil", delete)
+        if (pkg.isEmpty() && contains.isBlank()) Note(tx(R.string.pick_app_or_word))
+        else Big(tx(R.string.save)) { save(Rule(r.id, pkg, contains.trim(), action, arg, dry, on)) }
+        if (delete != null) Small(tx(R.string.delete_rule), delete)
     }
 }
 
@@ -447,37 +450,37 @@ fun DndScreen(tick: Int) {
     var menu by remember { mutableStateOf(false) }
     var typed by remember { mutableStateOf("") }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { changed() }
-    Page("Uyku modu otomasyonu") {
+    Page(tx(R.string.dnd_title)) {
         if (!HomeDnd.allowed(app)) Card {
-            Line("Rahatsız Etme erişimi gerekli", "Açmak için dokun") {
+            Line(tx(R.string.dnd_access_needed), tx(R.string.tap_to_turn_on)) {
                 Actions.start(ctx, Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             }
         }
         Card {
-            Toggle("Açık", "Gece + ev Wi-Fi'ı → Rahatsız Etme", { p.dndOn }, {
+            Toggle(tx(R.string.on), tx(R.string.dnd_on_sub), { p.dndOn }, {
                 p.dndOn = it
                 changed()
             })
             androidx.compose.runtime.key(again) {
-                Line("Başlangıç", hm(p.dndStart)) { pickTime(ctx, p.dndStart) { p.dndStart = it; changed() } }
-                Line("Bitiş", hm(p.dndEnd)) { pickTime(ctx, p.dndEnd) { p.dndEnd = it; changed() } }
+                Line(tx(R.string.start), hm(p.dndStart)) { pickTime(ctx, p.dndStart) { p.dndStart = it; changed() } }
+                Line(tx(R.string.end), hm(p.dndEnd)) { pickTime(ctx, p.dndEnd) { p.dndEnd = it; changed() } }
             }
-            Toggle("Yalnızca şarjdayken", "Evi yanlış tanımaya karşı güvenlik", { p.dndCharging }, {
+            Toggle(tx(R.string.only_charging), tx(R.string.only_charging_why), { p.dndCharging }, {
                 p.dndCharging = it
                 changed()
             })
         }
-        Card("Ev ağları") {
+        Card(tx(R.string.home_networks)) {
             androidx.compose.runtime.key(again, tick) {
                 val home = print != null && (print in p.dndHomes || HomeDnd.nameKnown(app, ssid))
                 Line(
-                    if (print == null) "Wi-Fi'a bağlı değil" else (ssid ?: "Bağlı ağın adı okunamıyor"),
-                    if (print == null) "" else if (home) "Ev ağı · uyku modu ${if (HomeDnd.active) "açık" else "kapalı"}" else "Ev ağı değil",
+                    if (print == null) tx(R.string.no_wifi) else (ssid ?: tx(R.string.name_unreadable)),
+                    if (print == null) "" else if (home) tx(if (HomeDnd.active) R.string.home_net_on else R.string.home_net_off) else tx(R.string.not_home_net),
                 )
                 val labels = p.dndLabels.mapNotNull { it.split('\t').takeIf { l -> l.size == 2 } }.associate { it[0] to it[1] }
                 val unnamed = p.dndHomes.filter { labels[it] == null || labels[it] !in p.dndNames }
                 for (n in p.dndNames.sorted()) Line(n, "", {
-                    Small("Sil") {
+                    Small(tx(R.string.delete)) {
                         p.dndNames = p.dndNames - n
                         val prints = labels.filterValues { it == n }.keys
                         p.dndHomes = p.dndHomes - prints
@@ -486,25 +489,25 @@ fun DndScreen(tick: Int) {
                     }
                 })
                 unnamed.forEachIndexed { i, f ->
-                    Line(labels[f] ?: "Adsız ağ${if (unnamed.size > 1) " ${i + 1}" else ""}", "Yönlendiricinin adresinden tanınır", {
-                        Small("Sil") {
+                    Line(labels[f] ?: (if (unnamed.size > 1) tx(R.string.unnamed_net_x, i + 1) else tx(R.string.unnamed_net)), tx(R.string.known_by_router), {
+                        Small(tx(R.string.delete)) {
                             p.dndHomes = p.dndHomes - f
                             p.dndLabels = p.dndLabels.filter { it.substringBefore('\t') != f }.toSet()
                             changed()
                         }
                     })
                 }
-                if (p.dndNames.isEmpty() && p.dndHomes.isEmpty()) Note("Henüz ev ağı yok.")
+                if (p.dndNames.isEmpty() && p.dndHomes.isEmpty()) Note(tx(R.string.no_home_nets))
             }
         }
-        Card("Ev ağı ekle") {
+        Card(tx(R.string.add_home_net)) {
             androidx.compose.runtime.key(again, tick) {
                 val add = { n: String ->
                     if (n.isNotBlank()) p.dndNames = p.dndNames + n.trim()
                     changed()
                 }
                 if (print != null && print !in p.dndHomes) Line(
-                    "Bağlı olduğun ağı ekle", ssid ?: "Adı okunamıyor; yönlendiricinin adresinden tanınacak",
+                    tx(R.string.add_connected), ssid ?: tx(R.string.add_connected_noname),
                 ) {
                     // Both ways are kept: the address works without location, the name also on a second router.
                     p.dndHomes = p.dndHomes + print
@@ -514,7 +517,7 @@ fun DndScreen(tick: Int) {
                     }
                     changed()
                 }
-                Line("Çevredeki ağlardan seç", if (!fine) "Konum izni ister" else if (around.isEmpty()) "Liste boş: konumu aç, Wi-Fi ayarını bir kez açıp dön" else "", {
+                Line(tx(R.string.pick_nearby), if (!fine) tx(R.string.needs_location) else if (around.isEmpty()) tx(R.string.nearby_empty) else "", {
                     DropdownMenu(menu, { menu = false }) {
                         for (n in around) DropdownMenuItem({ Text((if (n in p.dndNames) "✓ " else "") + n) }, {
                             if (n in p.dndNames) {
@@ -522,7 +525,7 @@ fun DndScreen(tick: Int) {
                                 changed()
                             } else add(n)
                         })
-                        DropdownMenuItem({ Text("Tamam") }, { menu = false })
+                        DropdownMenuItem({ Text(tx(R.string.ok)) }, { menu = false })
                     }
                 }) {
                     if (fine) menu = around.isNotEmpty()
@@ -530,26 +533,26 @@ fun DndScreen(tick: Int) {
                 }
             }
             OutlinedTextField(
-                typed, { typed = it }, Modifier.fillMaxWidth().padding(18.dp, 8.dp), label = { Text("Ya da ağın adını yaz") }, singleLine = true,
+                typed, { typed = it }, Modifier.fillMaxWidth().padding(18.dp, 8.dp), label = { Text(tx(R.string.or_type_name)) }, singleLine = true,
             )
-            if (typed.isNotBlank()) Line("Ekle: ${typed.trim()}") {
+            if (typed.isNotBlank()) Line(tx(R.string.add_x, typed.trim())) {
                 p.dndNames = p.dndNames + typed.trim()
                 typed = ""
                 changed()
             }
             if (p.dndNames.isNotEmpty() && !(fine && always)) Line(
-                "✗ Konum izni eksik", "Ağ adı ekran kapalıyken de okunsun: Konum → “Her zaman izin ver”, kesin konum açık",
+                tx(R.string.location_missing), tx(R.string.location_missing_how),
             ) {
                 if (!fine) ask.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 else if (Build.VERSION.SDK_INT >= 29) ask.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
             }
-            if (p.dndNames.isNotEmpty() && fine && !located) Line("✗ Telefonun konumu kapalı", "Kapalıyken ağ adı okunamaz; açmak için dokun") {
+            if (p.dndNames.isNotEmpty() && fine && !located) Line(tx(R.string.location_off), tx(R.string.location_off_how)) {
                 Actions.start(ctx, Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
             }
         }
-        Note("Android, telefonun kayıtlı ağlar listesini uygulamalara vermez; bu yüzden çevredeki ağlar gösterilir ya da ad elle yazılır. Ağın adı konum izniyle okunur, konum hiçbir yere gönderilmez; aynı adlı başka bir ağ da ev sayılır. Ad okunamazsa ağ, yönlendiricinin adreslerinden tanınır.")
-        Note("Alarmlar, yıldızlı kişiler ve 15 dk içinde tekrar arayanlar geçer. Wi-Fi koparsa 3 dk sonra kapanır. Emin olunamazsa telefon çalar.")
-        Note("Telefonun kendi zamanlanmış Rahatsız Etme / Uyku modunu KAPAT: iki kuraldan en sessiz olanı kazanır.")
+        Note(tx(R.string.dnd_note_names))
+        Note(tx(R.string.dnd_note_calls))
+        Note(tx(R.string.dnd_note_own))
     }
 }
 
@@ -561,17 +564,17 @@ fun RemindersScreen(tick: Int) {
     var text by remember { mutableStateOf("") }
     val list = load(tick, again) { app.history.reminders() }.orEmpty()
     val parsed = ReminderParser.parse(text, LocalDateTime.now())
-    Page("Hatırlatıcılar") {
+    Page(tx(R.string.reminders)) {
         if (!canExact(ctx)) Card {
-            Line("“Alarmlar ve hatırlatıcılar” kapalı", "Bu kapalıyken hatırlatıcı gecikebilir; açmak için dokun") {
+            Line(tx(R.string.exact_off), tx(R.string.exact_off_how)) {
                 if (Build.VERSION.SDK_INT >= 31) Actions.start(
                     ctx, Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${ctx.packageName}".toUri()),
                 )
             }
         }
-        if (!canNotify(ctx)) Card { Line("Bildirim izni kapalı", "Hatırlatıcı görünmez") { details(ctx) } }
+        if (!canNotify(ctx)) Card { Line(tx(R.string.post_off), tx(R.string.reminder_invisible)) { details(ctx) } }
         OutlinedTextField(
-            text, { text = it }, Modifier.fillMaxWidth(), label = { Text("yarın 9 süt al · 20 dk sonra çayı kapat") }, singleLine = true,
+            text, { text = it }, Modifier.fillMaxWidth(), label = { Text(tx(R.string.reminder_hint)) }, singleLine = true,
         )
         if (parsed != null) {
             val at = parsed.at.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -582,17 +585,17 @@ fun RemindersScreen(tick: Int) {
             }
         }
         Spacer(Modifier.height(10.dp))
-        if (list.isNotEmpty()) Card("Bekleyenler") {
+        if (list.isNotEmpty()) Card(tx(R.string.pending)) {
             for (r in list) Line(r.text, clock(r.at), {
-                Small("Sil") {
+                Small(tx(R.string.delete)) {
                     app.db.execute {
                         Reminders.delete(app, r.id)
                         app.main.post { again++ }
                     }
                 }
             })
-        } else Note("Bekleyen hatırlatıcı yok.")
-        Note("Uygulamayı “zorla durdur” yaparsan alarmlar silinir; uygulama yeniden açılınca kurulur.")
+        } else Note(tx(R.string.no_reminders))
+        Note(tx(R.string.reminders_note))
     }
 }
 
@@ -608,21 +611,21 @@ fun TimerScreen(tick: Int) {
         }
     }
     val left = app.prefs.timerEnd - now
-    Page("Uyku zamanlayıcı") {
+    Page(tx(R.string.timer)) {
         if (left > 0) {
             Card {
-                Line("Kalan", "%d:%02d".format(left / 60_000, left / 1000 % 60))
-                Line("+15 dakika") { SleepTimer.extend(app, 15); now = System.currentTimeMillis() }
-                Line("İptal") { SleepTimer.cancel(app); now = System.currentTimeMillis() }
+                Line(tx(R.string.left), "%d:%02d".format(left / 60_000, left / 1000 % 60))
+                Line(tx(R.string.plus_15_minutes)) { SleepTimer.extend(app, 15); now = System.currentTimeMillis() }
+                Line(tx(R.string.cancel)) { SleepTimer.cancel(app); now = System.currentTimeMillis() }
             }
         } else Card {
-            for (m in listOf(1, 15, 30, 45, 60, 90)) Line(if (m == 1) "1 dakika (deneme)" else "$m dakika") {
+            for (m in listOf(1, 15, 30, 45, 60, 90)) Line(if (m == 1) tx(R.string.one_min_test) else tx(R.string.x_minutes, m)) {
                 SleepTimer.start(app, m)
                 now = System.currentTimeMillis()
             }
         }
-        if (!Listener.allowed(ctx)) Note("Bildirim erişimi verilirse her oynatıcıyı durdurabilir; verilmezse yalnızca medya tuşu gönderir.")
-        Note("Süre dolunca ses kısılır, çalan durdurulur, ses düzeyi geri gelir. Aramaya “uyku 45” yazarak da kurulur. Bluetooth'u kapatmaz; çoğu kulaklık ses durunca kendisi kapanır.")
+        if (!Listener.allowed(ctx)) Note(tx(R.string.timer_note_listener))
+        Note(tx(R.string.timer_note))
     }
 }
 
@@ -631,9 +634,9 @@ fun LogScreen() {
     val app = LocalContext.current.app
     var again by remember { mutableIntStateOf(0) }
     val l = load(again) { app.history.logs() }.orEmpty()
-    Page("Günlük") {
-        Small("Yenile") { again++ }
-        if (l.isEmpty()) Note("Henüz bir şey olmadı.")
+    Page(tx(R.string.log)) {
+        Small(tx(R.string.refresh)) { again++ }
+        if (l.isEmpty()) Note(tx(R.string.nothing_yet))
         else Card { for ((t, m) in l) Line(m, clock(t)) }
     }
 }

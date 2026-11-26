@@ -1,5 +1,8 @@
 package dev.yesil.launchsoul.notif
 
+import dev.yesil.launchsoul.R
+import dev.yesil.launchsoul.tx
+
 import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
@@ -109,11 +112,11 @@ class Listener : NotificationListenerService() {
             if (lastRun.size > 500) lastRun.clear()
             val what = "${RuleAction.names[r.action]}: ${app.apps.labelOf(s.packageName)} – ${title(s.notification).take(60)}"
             if (r.dryRun) {
-                app.history.log("Deneme, yapılmadı → $what")
+                app.history.log(tx(R.string.log_rule_test, what))
                 continue
             }
             run(r, s)
-            app.history.log("Yapıldı → $what")
+            app.history.log(tx(R.string.log_rule_done, what))
         }
     }
 
@@ -141,7 +144,7 @@ class Listener : NotificationListenerService() {
         app.main.post {
             tts = TextToSpeech(this) { ok ->
                 if (ok == TextToSpeech.SUCCESS) {
-                    tts?.language = Locale.forLanguageTag("tr-TR")
+                    tts?.language = Locale.getDefault()
                     tts?.speak(t, TextToSpeech.QUEUE_ADD, null, "n")
                 } else tts = null
             }
