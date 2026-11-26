@@ -59,6 +59,7 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
 
     /** The launcher shows its recent apps, its app list or one of its other screens instead of the home screen. */
     private var covered = false
+    private var recentsOpen = false
     private var homes = emptySet<String>()
 
     /** Until then the home screen counts as reached although it has no focus yet, so a quick second swipe is ours. */
@@ -160,10 +161,13 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
             val cls = e.className?.toString() ?: ""
             if (pkg in launchers) {
                 val title = e.text.joinToString(" ")
-                val r = looksLikeRecents(cls, title) || looksLikeDrawer(title) || otherScreen(pkg, cls)
+                val recents = looksLikeRecents(cls, title)
+                val r = recents || looksLikeDrawer(title) || otherScreen(pkg, cls)
                 val gone = e.contentChangeTypes and AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED != 0
-                // The list says its name when it closes, too.
-                if (r || !cls.startsWith("android.")) covered = r && !gone
+                // The list says its name when it closes, too. Until it has closed, the launcher's own window may come
+                // to the front again (Honor does when recent apps are opened with a swipe), and that is not home.
+                if (recents) recentsOpen = !gone
+                if (r || !cls.startsWith("android.")) covered = r && !gone || recentsOpen
                 // This comes while the way home is still being swiped; focus follows up to half a second later.
                 if (cls in homes && !covered) {
                     comingHome = SystemClock.uptimeMillis() + COMING
@@ -173,7 +177,8 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
                 }
                 DebugLog.log("zone", "class=$cls title=${title.take(40)} covered=$r gone=$gone")
             } else if (pkg != "com.android.systemui" && pkg != "android" && pkg != packageName && !cls.startsWith("android.")) {
-                covered = false
+                // Another app's window says nothing about the launcher: Honor sends one while its recent apps are shown.
+                // Coming back home clears [covered] with the launcher's own event.
                 comingHome = 0
             }
         }
@@ -201,7 +206,11 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
                     f == null -> "no focus"
                     f.type != AccessibilityWindowInfo.TYPE_APPLICATION -> "focus type ${f.type}"
                     w.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD } -> "keyboard"
-                    f.root?.packageName?.toString() !in launchers -> "other app"
+                    f.root?.packageName?.toString() !in launchers -> {
+                        // Left for an app: whatever the launcher showed is gone.
+                        recentsOpen = false
+                        "other app"
+                    }
                     covered || looksLikeRecents("", f.title?.toString() ?: "") -> "covered"
                     editing(f.root) -> "edit"
                     else -> "home"
