@@ -477,7 +477,7 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
         close()
     }
     val lists by produceState(emptyList<AppInfo>() to emptyList<AppInfo>(), active) {
-        value = withContext(Dispatchers.IO) { ctx.app.apps.run { recent(2 * COLS) to suggested(30) } }
+        value = withContext(Dispatchers.IO) { ctx.app.apps.run { suggested(15) to recent(15) } }
     }
     val go: (Result) -> Unit = {
         remember1()
@@ -495,6 +495,14 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
     ) {
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), list, contentPadding = PaddingValues(16.dp, 12.dp)) {
             if (q.isBlank()) {
+                if (prefs.searchShowFrequent && lists.first.isNotEmpty()) {
+                    item { Head("Sık kullanılanlar") }
+                    item { AppStrip(lists.first, launch) }
+                }
+                if (prefs.searchShowRecentApps && lists.second.isNotEmpty()) {
+                    item { Head("Son kullanılanlar") }
+                    item { AppStrip(lists.second, launch) }
+                }
                 if (prefs.searchRecentOn && recent.isNotEmpty()) {
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -523,10 +531,6 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
                             )
                         }
                     }
-                }
-                for ((title, l) in listOf("Son kullanılanlar" to lists.first, "Sık kullanılanlar" to lists.second)) if (l.isNotEmpty()) {
-                    item { Head(title) }
-                    item { AppGrid(l, "", launch) }
                 }
             } else {
                 section("", res.answers, go)
@@ -631,52 +635,67 @@ private const val COLS = 5
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AppRow(r: List<AppInfo>, q: String, launch: (AppInfo) -> Unit) = Row(Modifier.fillMaxWidth()) {
+    for (a in r) AppCell(a, q, launch, Modifier.weight(1f))
+    repeat(COLS - r.size) { Spacer(Modifier.weight(1f)) }
+}
+
+/** One row that scrolls sideways; five apps fit on the screen. */
+@Composable
+private fun AppStrip(l: List<AppInfo>, launch: (AppInfo) -> Unit) = androidx.compose.foundation.layout.BoxWithConstraints(
+    Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Color(0xCC23262D)).padding(vertical = 6.dp),
+) {
+    val w = maxWidth / COLS
+    androidx.compose.foundation.lazy.LazyRow(Modifier.fillMaxWidth()) {
+        items(l.size, key = { l[it].key }) { AppCell(l[it], "", launch, Modifier.width(w)) }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun AppCell(a: AppInfo, q: String, launch: (AppInfo) -> Unit, modifier: Modifier) {
     val ctx = LocalContext.current
-    for (a in r) {
-        var menu by remember(a.key) { mutableStateOf(false) }
-        Column(
-            Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
-                .combinedClickable(onLongClick = { menu = true }, onClick = { launch(a) }).padding(4.dp, 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            AppIcon(a.key, 54.dp)
-            Text(
-                marked(a.label, matchRanges(fold(q.trim()), a.label)), Modifier.padding(top = 6.dp), color = Color.White, fontSize = 12.sp,
-                lineHeight = 14.sp, minLines = 2, maxLines = 2,
-                overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
-            )
-            DropdownMenu(menu, { menu = false }) {
-                DropdownMenuItem({ Text("Bul (ana ekranda göster)") }, {
-                    menu = false
-                    val s = dev.yesil.launchsoul.system.SoulAccessibility.instance
-                    if (s == null) Actions.toast(ctx, "Bunun için erişilebilirlik açık olmalı") else {
-                        s.find(a.label)
-                        // Nothing may lie under the search that opens now.
-                        var c: Context? = ctx
-                        while (c is android.content.ContextWrapper && c !is android.app.Activity) c = c.baseContext
-                        (c as? android.app.Activity)?.finish()
-                    }
-                })
-                DropdownMenuItem({ Text("Aç") }, {
-                    menu = false
-                    launch(a)
-                })
-                DropdownMenuItem({ Text("Uygulama bilgisi") }, {
-                    menu = false
-                    ctx.app.apps.details(a.key)
-                })
-                DropdownMenuItem({ Text("Kaldır") }, {
-                    menu = false
-                    ctx.app.apps.uninstall(ctx, a.key)
-                })
-                DropdownMenuItem({ Text("Aramada gizle") }, {
-                    menu = false
-                    ctx.app.prefs.hidden = ctx.app.prefs.hidden + a.key
-                })
-            }
+    var menu by remember(a.key) { mutableStateOf(false) }
+    Column(
+        modifier.clip(RoundedCornerShape(18.dp))
+            .combinedClickable(onLongClick = { menu = true }, onClick = { launch(a) }).padding(4.dp, 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AppIcon(a.key, 54.dp)
+        Text(
+            marked(a.label, matchRanges(fold(q.trim()), a.label)), Modifier.padding(top = 6.dp), color = Color.White, fontSize = 12.sp,
+            lineHeight = 14.sp, minLines = 2, maxLines = 2,
+            overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center,
+        )
+        DropdownMenu(menu, { menu = false }) {
+            DropdownMenuItem({ Text("Bul (ana ekranda göster)") }, {
+                menu = false
+                val s = dev.yesil.launchsoul.system.SoulAccessibility.instance
+                if (s == null) Actions.toast(ctx, "Bunun için erişilebilirlik açık olmalı") else {
+                    s.find(a.label)
+                    // Nothing may lie under the search that opens now.
+                    var c: Context? = ctx
+                    while (c is android.content.ContextWrapper && c !is android.app.Activity) c = c.baseContext
+                    (c as? android.app.Activity)?.finish()
+                }
+            })
+            DropdownMenuItem({ Text("Aç") }, {
+                menu = false
+                launch(a)
+            })
+            DropdownMenuItem({ Text("Uygulama bilgisi") }, {
+                menu = false
+                ctx.app.apps.details(a.key)
+            })
+            DropdownMenuItem({ Text("Kaldır") }, {
+                menu = false
+                ctx.app.apps.uninstall(ctx, a.key)
+            })
+            DropdownMenuItem({ Text("Aramada gizle") }, {
+                menu = false
+                ctx.app.prefs.hidden = ctx.app.prefs.hidden + a.key
+            })
         }
     }
-    repeat(COLS - r.size) { Spacer(Modifier.weight(1f)) }
 }
 
 /** Search over other apps, for the edge handles. */

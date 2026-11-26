@@ -218,7 +218,7 @@ fun Small(text: String, onClick: () -> Unit) = TextButton(onClick) { Text(text) 
 private fun MainScreen(go: (String) -> Unit) = Page("Better Launch Soul") {
     Card {
         Line("Ana ekran hareketleri", "Ana ekranda sağdan/soldan aşağı, yukarı") { go("gestures") }
-        Line("Evdeysem uyku modu", "Gece, yalnızca ev Wi-Fi'ında Rahatsız Etme") { go("dnd") }
+        Line("Uyku modu otomasyonu", "Gece, ev Wi-Fi'ında Rahatsız Etme") { go("dnd") }
         Line("İzinler", "Erişilebilirlik, Rahatsız Etme, pil") { go("permissions") }
     }
     Card("Diğer") {

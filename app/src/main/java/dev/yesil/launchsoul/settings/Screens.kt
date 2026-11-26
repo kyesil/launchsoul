@@ -140,7 +140,7 @@ fun PermissionScreen(tick: Int) {
                     ctx, Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${ctx.packageName}".toUri()),
                 )
             }
-            row("dnd", "Rahatsız Etme erişimi", "Evdeysem uyku modu") {
+            row("dnd", "Rahatsız Etme erişimi", "Uyku modu otomasyonu") {
                 Actions.start(ctx, Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             }
             row("contacts", "Kişiler", "Aramada kişi bulma") { ask.launch(Manifest.permission.READ_CONTACTS) }
@@ -183,6 +183,8 @@ fun SearchSettings(tick: Int) {
             ) { Actions.start(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
             Choice("Arama düğmesi", mapOf("phone" to "Telefon", "whatsapp" to "WhatsApp"), { p.searchCall }, { p.searchCall = it })
             Choice("Mesaj düğmesi", mapOf("whatsapp" to "WhatsApp", "sms" to "SMS"), { p.searchMessage }, { p.searchMessage = it })
+            Toggle("Sık kullanılanları göster", "Aramaya başlamadan önce, yana kaydırılır", { p.searchShowFrequent }, { p.searchShowFrequent = it })
+            Toggle("Son kullanılanları göster", "", { p.searchShowRecentApps }, { p.searchShowRecentApps = it })
             Toggle("Son aramaları göster", "Yalnızca bu telefonda saklanır", { p.searchRecentOn }, {
                 p.searchRecentOn = it
                 if (!it) p.searchRecent = ""
@@ -273,7 +275,7 @@ private fun EntryRow(app: App, e: Entry, open: Boolean, flip: () -> Unit, del: (
                 e.text, fontSize = 14.sp, color = Color(0xFFD3D8E1), maxLines = if (open) 60 else 2, overflow = TextOverflow.Ellipsis,
             )
             val end = e.ending()
-            if (open || end == Ending.MISSED) Text(
+            if (end == Ending.MISSED) Text(
                 end.label + if (e.removedAt > 0) " · ${clock(e.removedAt)}" else "", fontSize = 12.sp,
                 color = if (end == Ending.MISSED) Color(0xFFFFB36B) else MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -445,7 +447,7 @@ fun DndScreen(tick: Int) {
     var menu by remember { mutableStateOf(false) }
     var typed by remember { mutableStateOf("") }
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { changed() }
-    Page("Evdeysem uyku modu") {
+    Page("Uyku modu otomasyonu") {
         if (!HomeDnd.allowed(app)) Card {
             Line("Rahatsız Etme erişimi gerekli", "Açmak için dokun") {
                 Actions.start(ctx, Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
@@ -465,37 +467,53 @@ fun DndScreen(tick: Int) {
                 changed()
             })
         }
-        Card("Ev ağı") {
-            androidx.compose.runtime.key(again) {
-                Line(
-                    if (print == null) "Wi-Fi'a bağlı değil"
-                    else if (print in p.dndHomes || HomeDnd.nameKnown(app, ssid)) "Şu an ev ağındasın" else "Bu ağ kayıtlı değil",
-                    (if (ssid != null) "$ssid · " else "") + "${p.dndHomes.size + p.dndNames.size} ev ağı kayıtlı",
-                )
-                if (print != null && print !in p.dndHomes) Line("Bu ağı ev olarak kaydet", "İsimsiz: yönlendiriciden tanınır, konum izni istemez") {
-                    p.dndHomes = p.dndHomes + print
-                    changed()
-                }
-                if (p.dndHomes.isNotEmpty()) Line("İsimsiz kayıtları unut", "${p.dndHomes.size} ağ") {
-                    p.dndHomes = emptySet()
-                    changed()
-                }
-                Line("Şu an", if (HomeDnd.active) "Uyku modu açık" else "Kapalı")
-            }
-        }
-        Card("Ağ adına göre") {
+        Card("Ev ağları") {
             androidx.compose.runtime.key(again, tick) {
+                val home = print != null && (print in p.dndHomes || HomeDnd.nameKnown(app, ssid))
+                Line(
+                    if (print == null) "Wi-Fi'a bağlı değil" else (ssid ?: "Bağlı ağın adı okunamıyor"),
+                    if (print == null) "" else if (home) "Ev ağı · uyku modu ${if (HomeDnd.active) "açık" else "kapalı"}" else "Ev ağı değil",
+                )
+                val labels = p.dndLabels.mapNotNull { it.split('\t').takeIf { l -> l.size == 2 } }.associate { it[0] to it[1] }
+                val unnamed = p.dndHomes.filter { labels[it] == null || labels[it] !in p.dndNames }
                 for (n in p.dndNames.sorted()) Line(n, "", {
                     Small("Sil") {
                         p.dndNames = p.dndNames - n
+                        val prints = labels.filterValues { it == n }.keys
+                        p.dndHomes = p.dndHomes - prints
+                        p.dndLabels = p.dndLabels.filter { it.substringBefore('\t') !in prints }.toSet()
                         changed()
                     }
                 })
+                unnamed.forEachIndexed { i, f ->
+                    Line(labels[f] ?: "Adsız ağ${if (unnamed.size > 1) " ${i + 1}" else ""}", "Yönlendiricinin adresinden tanınır", {
+                        Small("Sil") {
+                            p.dndHomes = p.dndHomes - f
+                            p.dndLabels = p.dndLabels.filter { it.substringBefore('\t') != f }.toSet()
+                            changed()
+                        }
+                    })
+                }
+                if (p.dndNames.isEmpty() && p.dndHomes.isEmpty()) Note("Henüz ev ağı yok.")
+            }
+        }
+        Card("Ev ağı ekle") {
+            androidx.compose.runtime.key(again, tick) {
                 val add = { n: String ->
                     if (n.isNotBlank()) p.dndNames = p.dndNames + n.trim()
                     changed()
                 }
-                if (ssid != null && !HomeDnd.nameKnown(app, ssid)) Line("Ekle: $ssid", "Şu an bağlı olduğun ağ") { add(ssid) }
+                if (print != null && print !in p.dndHomes) Line(
+                    "Bağlı olduğun ağı ekle", ssid ?: "Adı okunamıyor; yönlendiricinin adresinden tanınacak",
+                ) {
+                    // Both ways are kept: the address works without location, the name also on a second router.
+                    p.dndHomes = p.dndHomes + print
+                    if (ssid != null) {
+                        p.dndNames = p.dndNames + ssid
+                        p.dndLabels = p.dndLabels + "$print\t$ssid"
+                    }
+                    changed()
+                }
                 Line("Çevredeki ağlardan seç", if (!fine) "Konum izni ister" else if (around.isEmpty()) "Liste boş: konumu aç, Wi-Fi ayarını bir kez açıp dön" else "", {
                     DropdownMenu(menu, { menu = false }) {
                         for (n in around) DropdownMenuItem({ Text((if (n in p.dndNames) "✓ " else "") + n) }, {
@@ -512,7 +530,7 @@ fun DndScreen(tick: Int) {
                 }
             }
             OutlinedTextField(
-                typed, { typed = it }, Modifier.fillMaxWidth().padding(18.dp, 8.dp), label = { Text("Ağ adını yaz") }, singleLine = true,
+                typed, { typed = it }, Modifier.fillMaxWidth().padding(18.dp, 8.dp), label = { Text("Ya da ağın adını yaz") }, singleLine = true,
             )
             if (typed.isNotBlank()) Line("Ekle: ${typed.trim()}") {
                 p.dndNames = p.dndNames + typed.trim()
@@ -529,10 +547,9 @@ fun DndScreen(tick: Int) {
                 Actions.start(ctx, Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
             }
         }
-        Note("Android, telefonun kayıtlı ağlar listesini uygulamalara vermez; bu yüzden çevredeki ağlar gösterilir ya da ad elle yazılır. Ağ adı için konum izni gerekir; konumun hiçbir yere gönderilmez. Aynı adlı başka bir ağ da ev sayılır.")
+        Note("Android, telefonun kayıtlı ağlar listesini uygulamalara vermez; bu yüzden çevredeki ağlar gösterilir ya da ad elle yazılır. Ağın adı konum izniyle okunur, konum hiçbir yere gönderilmez; aynı adlı başka bir ağ da ev sayılır. Ad okunamazsa ağ, yönlendiricinin adreslerinden tanınır.")
         Note("Alarmlar, yıldızlı kişiler ve 15 dk içinde tekrar arayanlar geçer. Wi-Fi koparsa 3 dk sonra kapanır. Emin olunamazsa telefon çalar.")
         Note("Telefonun kendi zamanlanmış Rahatsız Etme / Uyku modunu KAPAT: iki kuraldan en sessiz olanı kazanır.")
-        Note("Ev, konum izni istemeden yönlendiricinin adreslerinden tanınır. Aynı adresleri kullanan başka bir ağ yanlışlıkla ev sanılabilir.")
     }
 }
 

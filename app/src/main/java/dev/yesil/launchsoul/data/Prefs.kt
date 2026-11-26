@@ -49,6 +49,8 @@ class Prefs(ctx: Context) {
     var searchCall by str("phone")
     var searchMessage by str("whatsapp")
     var searchRecentOn by bool(true)
+    var searchShowFrequent by bool(true)
+    var searchShowRecentApps by bool(true)
 
     /** Newest first, one per line. */
     var searchRecent by str("")
@@ -66,6 +68,9 @@ class Prefs(ctx: Context) {
     var dndCharging by bool(true)
     var dndHomes by set()
     var dndNames by set()
+
+    /** "fingerprint<TAB>name" for saved networks whose name was known when they were saved. */
+    var dndLabels by set()
     var dndRuleId by str("")
     var dndLostAt by long(0)
 
