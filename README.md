@@ -22,10 +22,20 @@ The app has no internet permission. The interface follows the phone's language: 
 - Contacts with photo, call and message buttons; phone or WhatsApp for each.
 - Long press an app and choose Find to see where it is on the home screen.
 
+### Widgets
+
+- A search bar, the apps opened last from the search (resizable), and the notification history.
+- The notification widget shows the apps and words you choose; a row opens where the notification leads, the title opens the history.
+
+### Notifications
+
+- History kept on the phone, searched by text and by app name. "Open" goes to where the notification led, such as one chat.
+- Rules and block filters by app and words.
+
 ### Automations
 
 - **Sleep mode at home:** Do Not Disturb at night, only on your home Wi-Fi.
-- Notification history and rules, reminders, a sleep timer.
+- Reminders, a sleep timer.
 
 ## Permissions
 
@@ -35,7 +45,7 @@ All optional; each one only turns on its own feature.
 |---|---|
 | Accessibility | Gestures, locking, Find. Looks at which window is in front, at the icon you touch on the home screen and, for Find only, at the icon names there (on Honor also at the Honor Search screen). Content of other apps is not read. |
 | Notification access | History, rules, pausing media |
-| Contacts, phone | Contact search, direct calls |
+| Contacts, phone, call log | Contact search, direct calls, recent people (call log only when turned on) |
 | Do Not Disturb access | Sleep mode at home |
 | Location (always) | Only to read the name of the Wi-Fi network; not needed when the network is saved without a name |
 | Usage access | Recently and most used apps |

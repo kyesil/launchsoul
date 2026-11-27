@@ -57,6 +57,7 @@ import dev.yesil.launchsoul.auto.canNotify
 import dev.yesil.launchsoul.auto.clock
 import dev.yesil.launchsoul.auto.hasPermission
 import dev.yesil.launchsoul.core.ReminderParser
+import dev.yesil.launchsoul.core.fold
 import dev.yesil.launchsoul.notif.Ending
 import dev.yesil.launchsoul.notif.Entry
 import dev.yesil.launchsoul.notif.Listener
@@ -171,8 +172,13 @@ fun SearchSettings(tick: Int) {
         p.searchContacts = it
         again++
     }
+    val logAsk = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        p.searchPeopleCallLog = it
+        again++
+    }
     Page(tx(R.string.act_search)) {
-        Card {
+        BeforeTyping(again, { ask.launch(Manifest.permission.READ_CONTACTS) }, { logAsk.launch(Manifest.permission.READ_CALL_LOG) })
+        Card(tx(R.string.results)) {
             Toggle(tx(R.string.phone_settings), "", { p.searchSettings }, { p.searchSettings = it })
             androidx.compose.runtime.key(again) {
                 Toggle(tx(R.string.contacts), tx(R.string.needs_contacts), { p.searchContacts }, {
@@ -184,14 +190,12 @@ fun SearchSettings(tick: Int) {
                 tx(R.string.recent_and_most), if (remember(tick) { ctx.app.apps.usageAllowed() }) tx(R.string.by_phone_usage)
                 else tx(R.string.by_search_only),
             ) { Actions.start(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+        }
+        Card(tx(R.string.contacts)) {
             Choice(tx(R.string.call_button), mapOf("phone" to tx(R.string.phone), "whatsapp" to "WhatsApp"), { p.searchCall }, { p.searchCall = it })
             Choice(tx(R.string.message_button), mapOf("whatsapp" to "WhatsApp", "sms" to "SMS"), { p.searchMessage }, { p.searchMessage = it })
-            Toggle(tx(R.string.show_most_used), tx(R.string.before_typing), { p.searchShowFrequent }, { p.searchShowFrequent = it })
-            Toggle(tx(R.string.show_recently_used), "", { p.searchShowRecentApps }, { p.searchShowRecentApps = it })
-            Toggle(tx(R.string.show_recent_searches), tx(R.string.only_this_phone), { p.searchRecentOn }, {
-                p.searchRecentOn = it
-                if (!it) p.searchRecent = ""
-            })
+        }
+        Card(tx(R.string.apps)) {
             if (p.hidden.isNotEmpty()) Line(tx(R.string.unhide_apps), tx(R.string.hidden_count, p.hidden.size)) {
                 p.hidden = emptySet()
                 Actions.toast(ctx, tx(R.string.back_again))
@@ -200,6 +204,75 @@ fun SearchSettings(tick: Int) {
         }
         Note(tx(R.string.search_note))
         Note(tx(R.string.search_examples))
+    }
+}
+
+/** Which rows the search shows before typing, in which order and how many. */
+@Composable
+private fun BeforeTyping(again: Int, askContacts: () -> Unit, askLog: () -> Unit) {
+    val ctx = LocalContext.current
+    val p = ctx.app.prefs
+    var order by remember { mutableStateOf(p.searchOrder.split(',').filter { it.isNotBlank() }) }
+    fun move(i: Int, by: Int) {
+        val l = order.toMutableList()
+        val j = i + by
+        if (j !in l.indices) return
+        l[i] = l[j].also { l[j] = l[i] }
+        order = l
+        p.searchOrder = l.joinToString(",")
+    }
+    Card(tx(R.string.before_typing_title)) {
+        order.forEachIndexed { i, part ->
+            androidx.compose.runtime.key(part, again) {
+                val title = tx(when (part) {
+                    "frequent" -> R.string.most_used
+                    "recent" -> R.string.recently_used
+                    "searches" -> R.string.recent_searches
+                    else -> R.string.recent_people
+                })
+                var on by remember {
+                    mutableStateOf(when (part) {
+                        "frequent" -> p.searchShowFrequent
+                        "recent" -> p.searchShowRecentApps
+                        "searches" -> p.searchRecentOn
+                        else -> p.searchShowPeople && hasPermission(ctx, Manifest.permission.READ_CONTACTS)
+                    })
+                }
+                Row(Modifier.fillMaxWidth().padding(18.dp, 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, Modifier.weight(1f), fontSize = 16.sp, color = Color.White)
+                    Text("▲", Modifier.clickable(enabled = i > 0) { move(i, -1) }.padding(10.dp),
+                        color = if (i > 0) MaterialTheme.colorScheme.primary else Color(0x33FFFFFF))
+                    Text("▼", Modifier.clickable(enabled = i < order.size - 1) { move(i, 1) }.padding(10.dp),
+                        color = if (i < order.size - 1) MaterialTheme.colorScheme.primary else Color(0x33FFFFFF))
+                    androidx.compose.material3.Switch(on, { v ->
+                        on = v
+                        when (part) {
+                            "frequent" -> p.searchShowFrequent = v
+                            "recent" -> p.searchShowRecentApps = v
+                            "searches" -> {
+                                p.searchRecentOn = v
+                                if (!v) p.searchRecent = ""
+                            }
+                            else -> {
+                                p.searchShowPeople = v
+                                if (v && !hasPermission(ctx, Manifest.permission.READ_CONTACTS)) askContacts()
+                            }
+                        }
+                    })
+                }
+                if (on) when (part) {
+                    "frequent" -> Number(tx(R.string.how_many), 5..30, { p.searchNFrequent }, { p.searchNFrequent = it })
+                    "recent" -> Number(tx(R.string.how_many), 5..30, { p.searchNRecent }, { p.searchNRecent = it })
+                    "people" -> {
+                        Number(tx(R.string.how_many), 3..20, { p.searchNPeople }, { p.searchNPeople = it })
+                        Toggle(tx(R.string.people_from_calls), tx(R.string.people_from_calls_sub), { p.searchPeopleCallLog }, {
+                            if (it && !hasPermission(ctx, Manifest.permission.READ_CALL_LOG)) askLog() else p.searchPeopleCallLog = it
+                        })
+                    }
+                    else -> {}
+                }
+            }
+        }
     }
 }
 
@@ -213,7 +286,15 @@ fun HistoryScreen(tick: Int, start: String, go: (String) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     var again by remember { mutableIntStateOf(0) }
     var open by remember { mutableStateOf<Long?>(null) }
-    val list = load(q, missed, pkg, again, tick) { app.history.entries(q, pkg, missed) }.orEmpty()
+    val list = load(q, missed, pkg, again, tick) {
+        val byText = app.history.entries(q, pkg, missed)
+        // Then the notifications of apps whose name matches, after those whose text does.
+        val f = fold(q.trim())
+        val apps = if (f.length < 2 || pkg != null) emptySet() else app.history.packages().map { it.first }
+            .filter { fold(app.apps.labelOf(it)).contains(f) }.toSet()
+        val seen = byText.map { it.id }.toSet()
+        byText + apps.flatMap { app.history.entries("", it, missed, 200) }.filter { it.id !in seen }.sortedByDescending { it.time }
+    }.orEmpty()
     val pkgs = load(tick, again) { app.history.packages() }.orEmpty()
     val gaps = load(tick) { app.history.gaps() }.orEmpty()
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp, 8.dp)) {
@@ -283,7 +364,14 @@ private fun EntryRow(app: App, e: Entry, open: Boolean, flip: () -> Unit, del: (
                 color = if (end == Ending.MISSED) Color(0xFFFFB36B) else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (open) Row {
-                if (k != null) Small(tx(R.string.open_app)) { app.apps.launch(k) }
+                // The notification's own target (the chat, the mail) while it is known, else the app.
+                val target = remember(e.key) { dev.yesil.launchsoul.notif.Targets.has(e.key) }
+                if (target) Small(tx(R.string.open_notification)) {
+                    if (!dev.yesil.launchsoul.notif.Targets.open(app, e.key) && k != null) {
+                        Actions.toast(app, tx(R.string.target_gone))
+                        app.apps.launch(k)
+                    }
+                } else if (k != null) Small(tx(R.string.open_app)) { app.apps.launch(k) }
                 Small(tx(R.string.delete), del)
                 Small(tx(R.string.dont_save_app), exclude)
             }
@@ -330,13 +418,15 @@ fun HistorySettings(tick: Int, go: (String) -> Unit) {
 }
 
 @Composable
-fun RulesScreen(tick: Int) {
+/** The rules; with [block] only those that remove notifications, which this page calls blocking. */
+fun RulesScreen(tick: Int, block: Boolean = false) {
     val ctx = LocalContext.current
     val app = ctx.app
     var again by remember { mutableIntStateOf(0) }
     var edit by remember { mutableStateOf<Rule?>(null) }
-    val rules = load(tick, again) { app.history.rules() }.orEmpty()
+    val rules = load(tick, again) { app.history.rules() }.orEmpty().filter { !block || it.action == RuleAction.DISMISS }
     val save = { r: Rule ->
+        if (block && r.on) app.prefs.rulesOn = true
         app.db.execute {
             app.history.saveRule(r)
             app.main.post { again++ }
@@ -359,7 +449,8 @@ fun RulesScreen(tick: Int) {
         })
         return
     }
-    Page(tx(R.string.notification_rules)) {
+    Page(tx(if (block) R.string.blocking else R.string.notification_rules)) {
+        if (block) Note(tx(R.string.blocking_note))
         Card {
             Toggle(tx(R.string.rules_run), if (Listener.allowed(ctx)) "" else tx(R.string.needs_listener), { app.prefs.rulesOn }, {
                 app.prefs.rulesOn = it
@@ -372,8 +463,8 @@ fun RulesScreen(tick: Int) {
                 "${RuleAction.names[r.action]} ${r.arg}" + (if (r.dryRun) tx(R.string.test_only_tag) else "") + (if (r.on) "" else tx(R.string.off_tag)),
             ) { edit = r }
         }
-        Big(tx(R.string.add_rule)) { edit = Rule(0, "", "", RuleAction.DISMISS, "30", dryRun = true, on = true) }
-        Note(tx(R.string.rules_note))
+        Big(tx(if (block) R.string.add_block else R.string.add_rule)) { edit = Rule(0, "", "", RuleAction.DISMISS, "30", dryRun = !block, on = true) }
+        Note(tx(if (block) R.string.blocking_sound else R.string.rules_note))
     }
 }
 

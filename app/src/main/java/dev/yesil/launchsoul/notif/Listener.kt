@@ -36,6 +36,7 @@ object Badges {
 class Listener : NotificationListenerService() {
     private var tts: TextToSpeech? = null
     private val lastRun = HashMap<String, Long>()
+    private val widgets = Runnable { dev.yesil.launchsoul.widget.refreshWidgets(this, dev.yesil.launchsoul.widget.NotesWidget::class.java) }
 
     override fun onListenerConnected() {
         instance = this
@@ -96,6 +97,10 @@ class Listener : NotificationListenerService() {
         val text = text(n)
         if (title.isBlank() && text.isBlank()) return
         app.history.posted(s.key, s.packageName, title, text, s.postTime)
+        Targets.keep(s.key, n.contentIntent)
+        // Widgets are told at most every few seconds.
+        app.main.removeCallbacks(widgets)
+        app.main.postDelayed(widgets, 1500)
     }
 
     private fun applyRules(s: StatusBarNotification) {

@@ -14,11 +14,13 @@ class Entry(
     val id: Long, val pkg: String, val title: String, val text: String, val time: Long,
     /** 0 still there, otherwise the NotificationListenerService.REASON_* it went away with. */
     val reason: Int, val removedAt: Long,
+    /** The key Android gave the notification. */
+    val key: String = "",
 )
 
 /** How a notification ended, as far as Android tells us. */
 enum class Ending(private val id: Int) {
-    OPEN(R.string.end_open), SEEN(R.string.end_seen), APP(R.string.end_app), MISSED(R.string.end_missed);
+    OPEN(R.string.end_open), SEEN(R.string.end_seen), APP(R.string.end_app), BLOCKED(R.string.end_blocked), MISSED(R.string.end_missed);
 
     val label get() = tx(id)
 }
@@ -27,6 +29,7 @@ fun Entry.ending(): Ending = when (reason) {
     0 -> Ending.OPEN
     1, 2, 3 -> Ending.SEEN // click, cancel, cancel all
     8, 9, 12 -> Ending.APP // app cancel, app cancel all, group summary
+    10, 11 -> Ending.BLOCKED // removed by a listener: our rules
     else -> Ending.MISSED // timeout, package changed, snoozed, channel banned...
 }
 
@@ -129,13 +132,13 @@ class History(private val app: App) : SQLiteOpenHelper(app, "notifications.db", 
             args += pkg
         }
         if (missedOnly) where += "reason NOT IN (0,1,2,3,8,9,12)"
-        val sql = "SELECT id,pkg,title,body,time,reason,removed FROM n" +
+        val sql = "SELECT id,pkg,title,body,time,reason,removed,nkey FROM n" +
             (if (where.isEmpty()) "" else where.joinToString(" AND ", " WHERE ")) + " ORDER BY time DESC LIMIT $limit"
         return readableDatabase.rawQuery(sql, args.toTypedArray()).use { c ->
             c.map {
                 Entry(
                     it.getLong(0), it.getString(1), it.getString(2), it.getString(3), it.getLong(4), it.getInt(5),
-                    it.getLong(6),
+                    it.getLong(6), it.getString(7) ?: "",
                 )
             }
         }

@@ -18,8 +18,8 @@ android {
         applicationId = "dev.yesil.launchsoul"
         minSdk = 29
         targetSdk = 37
-        versionCode = 20
-        versionName = "0.4.1"
+        versionCode = 24
+        versionName = "0.5.2"
     }
 
     signingConfigs {
@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
 

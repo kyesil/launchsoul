@@ -101,6 +101,7 @@ class AppRepo(private val app: App) {
         return try {
             la.startMainActivity(a.component, a.user, bounds, opts)
             launches.edit().putInt(key, launches.getInt(key, 0) + 1).putLong("last:$key", System.currentTimeMillis()).apply()
+            dev.yesil.launchsoul.widget.refreshWidgets(app, dev.yesil.launchsoul.widget.AppsWidget::class.java)
             true
         } catch (e: Exception) {
             dev.yesil.launchsoul.system.DebugLog.log("launch", key, e)
@@ -112,7 +113,12 @@ class AppRepo(private val app: App) {
     fun count(key: String) = launches.getInt(key, 0)
 
     /** For things that are not apps, such as contacts. */
-    fun picked(key: String) = launches.edit().putInt(key, count(key) + 1).apply()
+    fun picked(key: String) = launches.edit().putInt(key, count(key) + 1).putLong("last:$key", System.currentTimeMillis()).apply()
+
+    /** When things whose key starts with [prefix] were last picked here, newest first. */
+    fun lastPicked(prefix: String): List<Pair<String, Long>> = launches.all.mapNotNull { (k, v) ->
+        if (k.startsWith("last:$prefix") && v is Long) k.removePrefix("last:") to v else null
+    }.sortedByDescending { it.second }
 
     /** The most used apps: first what was started here, then by the phone's usage time when that is allowed. */
     fun suggested(n: Int): List<AppInfo> {

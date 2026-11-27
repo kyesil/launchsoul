@@ -79,9 +79,13 @@ class SettingsActivity : ComponentActivity() {
                         "gestures" -> GestureScreen(t)
                         "edge" -> EdgeScreen(t, go)
                         "search" -> SearchSettings(t)
+                        "notifs" -> NotificationsScreen(go)
+                        "auto" -> AutomationScreen(go)
+                        "about" -> AboutScreen()
                         "history" -> HistoryScreen(t, query.value, go)
                         "historyset" -> HistorySettings(t, go)
                         "rules" -> RulesScreen(t)
+                        "block" -> RulesScreen(t, block = true)
                         "dnd" -> DndScreen(t)
                         "reminders" -> RemindersScreen(t)
                         "timer" -> TimerScreen(t)
@@ -216,37 +220,6 @@ fun Big(text: String, onClick: () -> Unit) = Button(onClick, Modifier.fillMaxWid
 
 @Composable
 fun Small(text: String, onClick: () -> Unit) = TextButton(onClick) { Text(text) }
-
-@Composable
-private fun MainScreen(go: (String) -> Unit) = Page("Better Launch Soul") {
-    Card {
-        Line(tx(R.string.home_gestures), tx(R.string.home_gestures_sub)) { go("gestures") }
-        Line(tx(R.string.dnd_title), tx(R.string.dnd_sub)) { go("dnd") }
-        Line(tx(R.string.permissions), tx(R.string.permissions_sub)) { go("permissions") }
-    }
-    Card(tx(R.string.other)) {
-        Line(tx(R.string.edge_gestures), tx(R.string.edge_sub)) { go("edge") }
-        Line(tx(R.string.act_search), tx(R.string.search_sub)) { go("search") }
-        Line(tx(R.string.notification_history), tx(R.string.history_sub)) { go("history") }
-        Line(tx(R.string.notification_rules), tx(R.string.rules_sub)) { go("rules") }
-        Line(tx(R.string.reminders), tx(R.string.reminders_sub)) { go("reminders") }
-        Line(tx(R.string.timer), tx(R.string.timer_sub)) { go("timer") }
-        Line(tx(R.string.log), tx(R.string.log_sub)) { go("log") }
-    }
-    Card(tx(R.string.reporting)) {
-        val ctx = LocalContext.current
-        Line(tx(R.string.share_log), tx(R.string.share_log_sub)) {
-            dev.yesil.launchsoul.system.DebugLog.share(ctx)
-        }
-        Toggle(tx(R.string.keep_log), tx(R.string.keep_log_sub),
-            { ctx.app.prefs.debugLog }, { ctx.app.prefs.debugLog = it })
-        Line(tx(R.string.clear_log)) {
-            dev.yesil.launchsoul.system.DebugLog.clear()
-            dev.yesil.launchsoul.system.Actions.toast(ctx, tx(R.string.cleared))
-        }
-    }
-    Note(tx(R.string.test_version_x, LocalContext.current.run { packageManager.getPackageInfo(packageName, 0).versionName }))
-}
 
 @Composable
 private fun GestureScreen(tick: Int) {

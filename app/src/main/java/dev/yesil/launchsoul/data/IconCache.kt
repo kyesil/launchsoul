@@ -66,6 +66,9 @@ class IconCache(private val app: App) {
         return null
     }
 
+    /** The icon, loaded here and now if needed: for widgets, which ask from a background thread. */
+    fun now(key: String): Bitmap? = cache.get(key) ?: runCatching { load(key) }.getOrNull()?.also { cache.put(key, it) }
+
     fun forgetPackage(pkg: String) {
         for (k in cache.snapshot().keys) if (k.startsWith("$pkg/")) cache.remove(k)
     }

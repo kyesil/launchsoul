@@ -53,6 +53,14 @@ class Prefs(ctx: Context) {
     var searchMessage by str("whatsapp")
     var searchRecentOn by bool(true)
     var searchShowFrequent by bool(true)
+    var searchShowPeople by bool(true)
+    var searchPeopleCallLog by bool(false)
+
+    /** The rows shown before typing, top to bottom: frequent, recent, searches, people. */
+    var searchOrder by str("frequent,recent,searches,people")
+    var searchNFrequent by int(15)
+    var searchNRecent by int(15)
+    var searchNPeople by int(8)
     var searchShowRecentApps by bool(true)
 
     /** Newest first, one per line. */

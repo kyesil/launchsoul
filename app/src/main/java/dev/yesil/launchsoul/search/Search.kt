@@ -21,6 +21,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -289,6 +291,53 @@ private fun contacts(ctx: Context, q: String): List<Person> = try {
     emptyList()
 }
 
+/** A contact found by its lookup key or by a phone number, with the number to call. */
+private fun person(ctx: Context, lookup: String? = null, number: String? = null): Person? = runCatching {
+    val r = ctx.contentResolver
+    val uri = if (lookup != null) Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookup)
+    else Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+    val cols = if (lookup != null) arrayOf(ContactsContract.Contacts._ID, ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.DISPLAY_NAME, ContactsContract.Contacts.PHOTO_URI)
+    else arrayOf(ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.LOOKUP_KEY, ContactsContract.PhoneLookup.DISPLAY_NAME, ContactsContract.PhoneLookup.PHOTO_URI)
+    r.query(uri, cols, null, null, null)?.use { c ->
+        if (!c.moveToFirst()) return@use null
+        val id = c.getLong(0)
+        val n = number ?: r.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI, arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=?", arrayOf(id.toString()),
+            ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY + " DESC",
+        )?.use { p -> if (p.moveToFirst()) p.getString(0) else null } ?: return@use null
+        Person(id, c.getString(1) ?: return@use null, c.getString(2) ?: n, n, c.getString(3))
+    }
+}.getOrNull()
+
+/** The people called or picked last: from the call log when that is allowed, and those opened from this search. */
+fun recentPeople(ctx: Context, n: Int): List<Person> {
+    if (!hasPermission(ctx, Manifest.permission.READ_CONTACTS)) return emptyList()
+    val seen = LinkedHashMap<String, Pair<Person, Long>>()
+    fun add(p: Person?, at: Long) {
+        if (p != null && (seen[p.lookup]?.second ?: 0) < at) seen[p.lookup] = p to at
+    }
+    for ((key, at) in ctx.app.apps.lastPicked("contact:").take(n)) add(person(ctx, lookup = key.removePrefix("contact:")), at)
+    if (ctx.app.prefs.searchPeopleCallLog && hasPermission(ctx, Manifest.permission.READ_CALL_LOG)) runCatching {
+        ctx.contentResolver.query(
+            android.provider.CallLog.Calls.CONTENT_URI,
+            arrayOf(android.provider.CallLog.Calls.NUMBER, android.provider.CallLog.Calls.DATE),
+            null, null, android.provider.CallLog.Calls.DATE + " DESC",
+        )?.use { c ->
+            val numbers = LinkedHashMap<String, Long>()
+            while (c.moveToNext() && numbers.size < n * 3) {
+                val num = c.getString(0) ?: continue
+                numbers.putIfAbsent(num, c.getLong(1))
+            }
+            for ((num, at) in numbers) {
+                add(person(ctx, number = num), at)
+                if (seen.size >= n * 2) break
+            }
+        }
+    }
+    return seen.values.sortedByDescending { it.second }.map { it.first }.take(n)
+}
+
 /** The contact's page in the phone app the user has chosen, or in any other app that can show it. */
 private fun openPerson(ctx: Context, p: Person) {
     val u = ContactsContract.Contacts.getLookupUri(p.id, p.lookup)
@@ -481,8 +530,11 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
         openPerson(ctx, p)
         close()
     }
+    val people by produceState(emptyList<Person>(), active) {
+        value = withContext(Dispatchers.IO) { if (prefs.searchShowPeople) recentPeople(ctx, prefs.searchNPeople) else emptyList() }
+    }
     val lists by produceState(emptyList<AppInfo>() to emptyList<AppInfo>(), active) {
-        value = withContext(Dispatchers.IO) { ctx.app.apps.run { suggested(15) to recent(15) } }
+        value = withContext(Dispatchers.IO) { ctx.app.apps.run { suggested(prefs.searchNFrequent) to recent(prefs.searchNRecent) } }
     }
     val go: (Result) -> Unit = {
         remember1()
@@ -500,41 +552,53 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
     ) {
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), list, contentPadding = PaddingValues(16.dp, 12.dp)) {
             if (q.isBlank()) {
-                if (prefs.searchShowFrequent && lists.first.isNotEmpty()) {
-                    item { Head(tx(R.string.most_used)) }
-                    item { AppStrip(lists.first, launch) }
-                }
-                if (prefs.searchShowRecentApps && lists.second.isNotEmpty()) {
-                    item { Head(tx(R.string.recently_used)) }
-                    item { AppStrip(lists.second, launch) }
-                }
-                if (prefs.searchRecentOn && recent.isNotEmpty()) {
-                    item {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Head(tx(R.string.recent_searches))
-                            Spacer(Modifier.weight(1f))
-                            Text(
-                                tx(R.string.clear),
-                                Modifier.clip(RoundedCornerShape(12.dp)).clickable {
-                                    recent = emptyList()
-                                    prefs.searchRecent = ""
-                                }.padding(8.dp, 6.dp),
-                                color = Color(0xFF8FB8FF), fontSize = 13.sp,
-                            )
+                for (part in prefs.searchOrder.split(',')) when (part) {
+                    "frequent" -> {
+                    if (prefs.searchShowFrequent && lists.first.isNotEmpty()) {
+                        item { Head(tx(R.string.most_used)) }
+                        item { AppStrip(lists.first, launch) }
+                    }
+                    }
+                    "recent" -> {
+                    if (prefs.searchShowRecentApps && lists.second.isNotEmpty()) {
+                        item { Head(tx(R.string.recently_used)) }
+                        item { AppStrip(lists.second, launch) }
+                    }
+                    }
+                    "searches" -> {
+                    if (prefs.searchRecentOn && recent.isNotEmpty()) {
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Head(tx(R.string.recent_searches))
+                                Spacer(Modifier.weight(1f))
+                                Text(
+                                    tx(R.string.clear),
+                                    Modifier.clip(RoundedCornerShape(12.dp)).clickable {
+                                        recent = emptyList()
+                                        prefs.searchRecent = ""
+                                    }.padding(8.dp, 6.dp),
+                                    color = Color(0xFF8FB8FF), fontSize = 13.sp,
+                                )
+                            }
+                        }
+                        item {
+                            Row(
+                                Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+                                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                            ) {
+                                for (r in recent) Text(
+                                    r,
+                                    Modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xCC2B2E35)).clickable { q = r }
+                                        .padding(14.dp, 9.dp),
+                                    color = Color.White, fontSize = 14.sp, maxLines = 1,
+                                )
+                            }
                         }
                     }
-                    item {
-                        Row(
-                            Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
-                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-                        ) {
-                            for (r in recent) Text(
-                                r,
-                                Modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xCC2B2E35)).clickable { q = r }
-                                    .padding(14.dp, 9.dp),
-                                color = Color.White, fontSize = 14.sp, maxLines = 1,
-                            )
-                        }
+                    }
+                    "people" -> if (prefs.searchShowPeople && people.isNotEmpty()) {
+                        item { Head(tx(R.string.recent_people)) }
+                        item { People(people, "", person, call, write) }
                     }
                 }
             } else {
@@ -586,15 +650,16 @@ fun SearchScreen(active: Boolean, close: () -> Unit) {
                     }),
                 )
             }
-            if (q.isNotEmpty()) Text(
-                "✕", Modifier.clip(RoundedCornerShape(20.dp)).clickable { q = "" }.padding(10.dp), color = Color(0xFFB9C0CC),
-            ) else Text(
-                "⚙",
+            if (q.isNotEmpty()) androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.Outlined.Close, null,
+                Modifier.clip(RoundedCornerShape(20.dp)).clickable { q = "" }.padding(8.dp).size(22.dp), tint = Color(0xFFB9C0CC),
+            ) else androidx.compose.material3.Icon(
+                androidx.compose.material.icons.Icons.Outlined.Settings, tx(R.string.settings),
                 Modifier.clip(RoundedCornerShape(20.dp)).clickable {
                     Actions.start(ctx, Intent(ctx, SettingsActivity::class.java))
                     close()
-                }.padding(10.dp),
-                color = Color(0xFFB9C0CC), fontSize = 18.sp,
+                }.padding(8.dp).size(22.dp),
+                tint = Color(0xFFB9C0CC),
             )
         }
     }

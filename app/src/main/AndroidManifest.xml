@@ -18,6 +18,8 @@
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
+    <!-- Optional, for the recent people before typing in the search. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <!-- Optional, for the most used apps in the search. -->
     <uses-permission
         android:name="android.permission.PACKAGE_USAGE_STATS"
@@ -107,6 +109,63 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/files" />
         </provider>
+
+        <receiver
+            android:name=".widget.SearchWidget"
+            android:exported="false"
+            android:label="@string/widget_search_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_search_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.AppsWidget"
+            android:exported="false"
+            android:label="@string/widget_apps_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_apps_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.NotesWidget"
+            android:exported="false"
+            android:label="@string/widget_notes_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_notes_info" />
+        </receiver>
+
+        <service
+            android:name=".widget.AppsService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <service
+            android:name=".widget.NotesService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <activity
+            android:name=".widget.TapActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <activity
+            android:name=".widget.NotesConfig"
+            android:excludeFromRecents="true"
+            android:exported="true" />
 
         <receiver
             android:name=".auto.AutoReceiver"

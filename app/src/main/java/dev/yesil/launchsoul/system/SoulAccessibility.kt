@@ -60,6 +60,7 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
     /** The launcher shows its recent apps, its app list or one of its other screens instead of the home screen. */
     private var covered = false
     private var recentsOpen = false
+    private var recentsGoneAt = 0L
     private var homes = emptySet<String>()
 
     /** Until then the home screen counts as reached although it has no focus yet, so a quick second swipe is ours. */
@@ -166,7 +167,13 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
                 val gone = e.contentChangeTypes and AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED != 0
                 // The list says its name when it closes, too. Until it has closed, the launcher's own window may come
                 // to the front again (Honor does when recent apps are opened with a swipe), and that is not home.
-                if (recents) recentsOpen = !gone
+                if (recents) {
+                    // Swiping home from an app, Honor reports the list appearing and disappearing at once, sometimes the
+                    // other way round: an appearance right after a disappearance is not taken as open.
+                    val now = SystemClock.uptimeMillis()
+                    if (gone) recentsGoneAt = now
+                    recentsOpen = !gone && now - recentsGoneAt > 400
+                }
                 if (r || !cls.startsWith("android.")) covered = r && !gone || recentsOpen
                 // This comes while the way home is still being swiped; focus follows up to half a second later.
                 if (cls in homes && !covered) {
