@@ -44,6 +44,7 @@ class App : Application() {
             NotificationChannel(CH_TIMER, tx(R.string.ch_timer), NotificationManager.IMPORTANCE_LOW),
         )
         HomeDnd.init(this)
+        dev.yesil.launchsoul.system.Heal.later(this)
         io.execute { runCatching { Reminders.rescheduleAll(this) } }
     }
 

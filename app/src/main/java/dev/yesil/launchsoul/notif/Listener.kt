@@ -40,6 +40,8 @@ class Listener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         instance = this
+        // The system brings the listener back after the process was ended, the accessibility service it does not.
+        dev.yesil.launchsoul.system.Heal.later(this)
         dev.yesil.launchsoul.system.DebugLog.log("listener", "connected")
         val p = app.prefs
         val now = System.currentTimeMillis()

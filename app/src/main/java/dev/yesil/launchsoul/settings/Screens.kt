@@ -1,5 +1,6 @@
 package dev.yesil.launchsoul.settings
 
+import dev.yesil.launchsoul.system.Heal
 import dev.yesil.launchsoul.R
 import dev.yesil.launchsoul.tx
 
@@ -80,6 +81,35 @@ private fun <T> load(vararg key: Any?, f: () -> T): T? {
     return s
 }
 
+/**
+ * A warning when the gestures are stopped because the phone ended the app, or when the app cannot turn itself back on;
+ * [go] opens the permissions, or nothing when already there.
+ */
+@Composable
+fun HealWarning(tick: Int, go: () -> Unit) {
+    val ctx = LocalContext.current
+    var again by remember { mutableIntStateOf(0) }
+    val a11y = remember(tick, again) { Heal.state(ctx) }
+    val heal = remember(tick, again) { Heal.allowed(ctx) }
+    if (a11y == Heal.State.STOPPED) Card {
+        Line(tx(R.string.a11y_stopped), if (heal) tx(R.string.a11y_stopped_tap) else tx(R.string.a11y_stopped_manual), {
+            Text(tx(R.string.restart), color = Color(0xFFFFB74D))
+        }) {
+            if (Heal.now(ctx, asked = true)) {
+                Actions.toast(ctx, tx(R.string.turning_on))
+                ctx.app.main.postDelayed({ again++ }, 1500)
+            } else Actions.start(ctx, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+    } else if (!heal && a11y == Heal.State.RUNNING) Card {
+        Line(tx(R.string.self_heal_warn), tx(R.string.self_heal_warn_sub), { Text(tx(R.string.off), color = Color(0xFFFFB74D)) }) {
+            ctx.getSystemService(android.content.ClipboardManager::class.java)
+                .setPrimaryClip(android.content.ClipData.newPlainText("adb", Heal.COMMAND))
+            Actions.toast(ctx, tx(R.string.copied))
+            go()
+        }
+    }
+}
+
 fun a11yOn(ctx: Context): Boolean =
     Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
         .split(':').any { ComponentName.unflattenFromString(it) == ComponentName(ctx, SoulAccessibility::class.java) }
@@ -124,9 +154,29 @@ fun PermissionScreen(tick: Int) {
     }
     Page(tx(R.string.permissions)) {
         Note(tx(R.string.perm_note))
+        HealWarning(tick + again) {}
         Card(tx(R.string.basics)) {
-            row("a11y", tx(R.string.accessibility), tx(R.string.perm_a11y_why)) {
-                Actions.start(ctx, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            val a11y = remember(tick, again) { Heal.state(ctx) }
+            val heal = remember(tick, again) { Heal.allowed(ctx) }
+            Line(tx(R.string.accessibility), if (a11y == Heal.State.STOPPED) tx(R.string.a11y_stopped_why) else tx(R.string.perm_a11y_why), {
+                Text(
+                    when (a11y) { Heal.State.RUNNING -> tx(R.string.on); Heal.State.STOPPED -> tx(R.string.restart); else -> tx(R.string.turn_on) },
+                    color = when (a11y) { Heal.State.RUNNING -> Color(0xFF7ED492); Heal.State.STOPPED -> Color(0xFFFFB74D); else -> MaterialTheme.colorScheme.primary },
+                )
+            }) {
+                if (a11y == Heal.State.RUNNING || !Heal.now(ctx, asked = true)) Actions.start(ctx, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                else {
+                    Actions.toast(ctx, tx(R.string.turning_on))
+                    ctx.app.main.postDelayed({ again++ }, 1500)
+                }
+            }
+            Line(
+                tx(R.string.self_heal), if (heal) tx(R.string.self_heal_on) else tx(R.string.self_heal_off),
+                { if (!heal) Text(tx(R.string.off), color = Color(0xFFFFB74D)) },
+            ) {
+                ctx.getSystemService(android.content.ClipboardManager::class.java)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("adb", dev.yesil.launchsoul.system.Heal.COMMAND))
+                Actions.toast(ctx, tx(R.string.copied))
             }
             row("notif", tx(R.string.notification_access), tx(R.string.perm_listener_why)) {
                 Actions.start(ctx, Intent(Listener.settingsAction))

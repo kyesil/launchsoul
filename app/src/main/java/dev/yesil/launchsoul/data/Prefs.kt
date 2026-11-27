@@ -41,6 +41,21 @@ class Prefs(ctx: Context) {
     var zoneSide by int(40)
     var zoneBottom by int(28)
     var zoneVisible by bool(false)
+    var clipHide by bool(false)
+
+    // Timing and position, adjustable under the home gestures
+    var tSwipe by int(40)
+    var tPage by int(24)
+    var tHold by int(400)
+    var tDouble by int(250)
+    var tComing by int(1200)
+    var tRescue by int(800)
+    var tRecentsGap by int(400)
+    var tSettle by int(80)
+    var tEditPoll by int(500)
+    var tTop by int(44)
+    var tBottom by int(32)
+    var tEdgeSwipe by int(48)
 
     /** Seconds without strips after a long press. */
     var zonePause by int(6)
@@ -87,6 +102,9 @@ class Prefs(ctx: Context) {
 
     var hidden by set()
     var debugLog by bool(false)
+
+    /** The accessibility service was on last time: then it is turned on again after the process was ended. */
+    var a11yWanted by bool(false)
     var timerEnd by long(0)
     var lastHeartbeat by long(0)
 

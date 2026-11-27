@@ -18,8 +18,8 @@ android {
         applicationId = "dev.yesil.launchsoul"
         minSdk = 29
         targetSdk = 37
-        versionCode = 24
-        versionName = "0.5.2"
+        versionCode = 28
+        versionName = "0.5.6"
     }
 
     signingConfigs {

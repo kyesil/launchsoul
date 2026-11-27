@@ -25,6 +25,10 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Given only over ADB, to turn the accessibility service on again after the phone ended the process. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
 
     <queries>
         <intent>
@@ -52,6 +56,7 @@
 
         <activity
             android:name=".settings.SettingsActivity"
+            android:excludeFromRecents="true"
             android:exported="true"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">

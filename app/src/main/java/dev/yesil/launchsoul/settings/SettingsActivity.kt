@@ -1,5 +1,7 @@
 package dev.yesil.launchsoul.settings
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Timer
 import dev.yesil.launchsoul.R
 import dev.yesil.launchsoul.tx
 
@@ -75,8 +77,8 @@ class SettingsActivity : ComponentActivity() {
                     val go: (String) -> Unit = { stack += it }
                     val t = tick.intValue
                     when (val s = stack.last()) {
-                        "main" -> MainScreen(go)
-                        "gestures" -> GestureScreen(t)
+                        "main" -> MainScreen(go, t)
+                        "gestures" -> GestureScreen(t, go)
                         "edge" -> EdgeScreen(t, go)
                         "search" -> SearchSettings(t)
                         "notifs" -> NotificationsScreen(go)
@@ -86,6 +88,7 @@ class SettingsActivity : ComponentActivity() {
                         "historyset" -> HistorySettings(t, go)
                         "rules" -> RulesScreen(t)
                         "block" -> RulesScreen(t, block = true)
+                        "tuning" -> TuningScreen()
                         "dnd" -> DndScreen(t)
                         "reminders" -> RemindersScreen(t)
                         "timer" -> TimerScreen(t)
@@ -222,7 +225,7 @@ fun Big(text: String, onClick: () -> Unit) = Button(onClick, Modifier.fillMaxWid
 fun Small(text: String, onClick: () -> Unit) = TextButton(onClick) { Text(text) }
 
 @Composable
-private fun GestureScreen(tick: Int) {
+private fun GestureScreen(tick: Int, go: (String) -> Unit) {
     val ctx = LocalContext.current
     val p = ctx.app.prefs
     val access = remember(tick) { a11yOn(ctx) }
@@ -262,6 +265,7 @@ private fun GestureScreen(tick: Int) {
             )
         }
         Note(tx(R.string.panel_note))
+        Card { NavLine(Icons.Outlined.Timer, tx(R.string.tuning), tx(R.string.tuning_sub)) { go("tuning") } }
     }
 }
 

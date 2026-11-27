@@ -90,8 +90,8 @@ class HomeZones(private val service: SoulAccessibility) {
         else service.resources.displayMetrics.let { Rect(0, 0, it.widthPixels, it.heightPixels) }
         val w = b.width()
         // The status bar and the bottom gesture area stay the phone's.
-        val top = (44 * d).toInt()
-        val low = b.height() - (32 * d).toInt()
+        val top = (p.tTop * d).toInt()
+        val low = b.height() - (p.tBottom * d).toInt()
         val bar = (p.zoneBottom * d).toInt().coerceAtMost(low - b.height() / 2)
         val side = (p.zoneSide * d).toInt().coerceAtMost(w / 2)
         if (side > 0) {
@@ -252,7 +252,7 @@ class HomeZones(private val service: SoulAccessibility) {
                         }
                     }
                     removeCallbacks(hold)
-                    postDelayed(hold, HOLD)
+                    postDelayed(hold, service.app.prefs.tHold.toLong())
                 }
                 MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> {
                     removeCallbacks(hold)
@@ -263,10 +263,10 @@ class HomeZones(private val service: SoulAccessibility) {
                     val dx = e.rawX - points[0][0]
                     val dy = e.rawY - points[0][1]
                     if (abs(dx) > slop || abs(dy) > slop) removeCallbacks(hold)
-                    if (!held && abs(dy) >= 40 * d && abs(dy) > 1.3f * abs(dx)) {
+                    if (!held && abs(dy) >= service.app.prefs.tSwipe * d && abs(dy) > 1.3f * abs(dx)) {
                         done = true
                         swipe(dy < 0)
-                    } else if (!held && !turned && abs(dx) >= 24 * d && abs(dx) > 1.3f * abs(dy)) {
+                    } else if (!held && !turned && abs(dx) >= service.app.prefs.tPage * d && abs(dx) > 1.3f * abs(dy)) {
                         // The page is turned while the finger is still moving; where the launcher does not offer that, it is replayed when the finger is up.
                         val pager = seen?.pager
                         if (pager != null) {
@@ -316,7 +316,7 @@ class HomeZones(private val service: SoulAccessibility) {
                 }
                 else -> {
                     first = floatArrayOf(x, y)
-                    postDelayed(single, DOUBLE)
+                    postDelayed(single, service.app.prefs.tDouble.toLong())
                 }
             }
         }
@@ -336,8 +336,4 @@ class HomeZones(private val service: SoulAccessibility) {
         }
     }
 
-    private companion object {
-        const val HOLD = 400L
-        const val DOUBLE = 250L
-    }
 }

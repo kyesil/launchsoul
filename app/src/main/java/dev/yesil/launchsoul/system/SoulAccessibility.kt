@@ -42,7 +42,14 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
         }
     }
 
+    /** Called when the service is turned off, not when the process is ended. */
+    override fun onUnbind(intent: Intent?): Boolean {
+        app.prefs.a11yWanted = false
+        return super.onUnbind(intent)
+    }
+
     override fun onServiceConnected() {
+        app.prefs.a11yWanted = true
         instance = this
         DebugLog.log("a11y", "connected")
         androidx.core.content.ContextCompat.registerReceiver(this, screen, IntentFilter().apply {
@@ -129,7 +136,7 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
     /** Windows come and go in bursts, so the state is read once they have settled. */
     private fun check() {
         app.main.removeCallbacks(evaluate)
-        app.main.postDelayed(evaluate, 80)
+        app.main.postDelayed(evaluate, app.prefs.tSettle.toLong())
     }
 
     /**
@@ -150,12 +157,19 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
         check()
     }
 
+    /** The phone is on its way home: a search opened now may be closed by the end of that way. */
+    fun comingHome() = comingHome > SystemClock.uptimeMillis()
+
     fun recheck() {
         app.main.post(evaluate)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val e = event ?: return
+        if (app.prefs.clipHide && (e.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED || e.packageName == "com.android.systemui")) {
+            app.main.removeCallbacks(clipboard)
+            app.main.postDelayed(clipboard, 40)
+        }
         if (!app.prefs.zoneOn && !app.prefs.edgeEnabled) return
         if (e.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = e.packageName?.toString() ?: ""
@@ -172,14 +186,14 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
                     // other way round: an appearance right after a disappearance is not taken as open.
                     val now = SystemClock.uptimeMillis()
                     if (gone) recentsGoneAt = now
-                    recentsOpen = !gone && now - recentsGoneAt > 400
+                    recentsOpen = !gone && now - recentsGoneAt > app.prefs.tRecentsGap
                 }
                 if (r || !cls.startsWith("android.")) covered = r && !gone || recentsOpen
                 // This comes while the way home is still being swiped; focus follows up to half a second later.
                 if (cls in homes && !covered) {
-                    comingHome = SystemClock.uptimeMillis() + COMING
+                    comingHome = SystemClock.uptimeMillis() + app.prefs.tComing
                     app.main.removeCallbacks(settled)
-                    app.main.postDelayed(settled, COMING + 50)
+                    app.main.postDelayed(settled, app.prefs.tComing + 50L)
                     evaluate.run()
                 }
                 DebugLog.log("zone", "class=$cls title=${title.take(40)} covered=$r gone=$gone")
@@ -190,6 +204,32 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
             }
         }
         check()
+    }
+
+    /** Closes the bar the system shows after something is copied, with its edit and share buttons. */
+    private val clipboard = Runnable {
+        for (w in runCatching { windows }.getOrNull().orEmpty()) {
+            val title = w.title?.toString().orEmpty()
+            val root = w.root ?: continue
+            if (root.packageName != "com.android.systemui") continue
+            val close = CLIP_CLOSE.firstNotNullOfOrNull { root.findAccessibilityNodeInfosByViewId(it).firstOrNull() }
+            // Honor: a snack bar with the text, Edit, Share and a close button; Android: its own ids.
+            val clip = title.contains("clipboard", true) || CLIP_SIGNS.any { root.findAccessibilityNodeInfosByViewId(it).isNotEmpty() } ||
+                HONOR_SIGNS.all { root.findAccessibilityNodeInfosByViewId(it).isNotEmpty() }
+            if (!clip) continue
+            if (close == null) {
+                DebugLog.log("clip", "no close in title=$title ids=" + ids(root).joinToString())
+                continue
+            }
+            val ok = close.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+            DebugLog.log("clip", "closed=$ok title=$title")
+        }
+    }
+
+    private fun ids(n: android.view.accessibility.AccessibilityNodeInfo, out: MutableList<String> = mutableListOf(), depth: Int = 0): List<String> {
+        n.viewIdResourceName?.let { out += it.substringAfter(":id/") + if (n.isClickable) "*" else "" }
+        if (depth < 8) for (i in 0 until n.childCount) n.getChild(i)?.let { ids(it, out, depth + 1) }
+        return out
     }
 
     /** Is the phone's own home screen in front, with no panel, keyboard, lock or recent apps screen over it? */
@@ -229,7 +269,7 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
         app.main.removeCallbacks(lookForEdit)
         if ((why == "home" || why == "edit") && launchers.any { it in EDITABLE } &&
             getSystemService(android.os.PowerManager::class.java).isInteractive
-        ) app.main.postDelayed(lookForEdit, 500)
+        ) app.main.postDelayed(lookForEdit, app.prefs.tEditPoll.toLong())
         return why == "home"
     }
 
@@ -300,8 +340,8 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
         val d = resources.displayMetrics.density
         val screenH = wm.currentBounds().height()
         // The status bar, the bottom gesture area and the keyboard stay free.
-        val top = (44 * d).toInt()
-        val room = minOf(screenH - (32 * d).toInt(), imeTop) - top
+        val top = (p.tTop * d).toInt()
+        val room = minOf(screenH - (p.tBottom * d).toInt(), imeTop) - top
         if (room <= 0) return
         val h = (p.edgeHeight * d).toInt().coerceAtMost(room)
         val y = ((screenH - (p.edgeHeight * d).toInt()) * p.edgePosition / 100f).toInt().coerceIn(top, top + room - h)
@@ -359,7 +399,7 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
                 MotionEvent.ACTION_MOVE -> if (!done) {
                     val dx = e.rawX - sx
                     val dy = e.rawY - sy
-                    if (abs(dy) >= 48 * d && abs(dy) > 1.5f * abs(dx)) {
+                    if (abs(dy) >= app.prefs.tEdgeSwipe * d && abs(dy) > 1.5f * abs(dx)) {
                         done = true
                         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         Actions.run(this@SoulAccessibility, if (dy > 0) app.prefs.edgeDown else app.prefs.edgeUp)
@@ -376,7 +416,16 @@ class SoulAccessibility : AccessibilityService(), SharedPreferences.OnSharedPref
     }
 
     companion object {
-        private const val COMING = 1_200L
+        private val CLIP_CLOSE = listOf(
+            "com.android.systemui:id/btn_close_behind_actions", "com.android.systemui:id/dismiss_button", "com.android.systemui:id/clipboard_dismiss",
+        )
+        private val HONOR_SIGNS = listOf(
+            "com.android.systemui:id/snackbar_text", "com.android.systemui:id/snackbar_action_first",
+            "com.android.systemui:id/snackbar_action_second", "com.android.systemui:id/btn_close_behind_actions",
+        )
+        private val CLIP_SIGNS = listOf(
+            "com.android.systemui:id/clipboard_preview", "com.android.systemui:id/share_chip", "com.android.systemui:id/clipboard_ui",
+        )
 
         /** What is only seen in the edit mode of a launcher. */
         private val EDITABLE = mapOf("com.hihonor.android.launcher" to listOf("hat_manage_text", "cellbutton_container"))

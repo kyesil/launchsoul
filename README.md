@@ -36,6 +36,7 @@ The app has no internet permission. The interface follows the phone's language: 
 
 - **Sleep mode at home:** Do Not Disturb at night, only on your home Wi-Fi.
 - Reminders, a sleep timer.
+- **Close the copy bar:** the bar with Edit and Share that the phone shows after copying closes at once.
 
 ## Permissions
 
@@ -43,13 +44,14 @@ All optional; each one only turns on its own feature.
 
 | Permission | Used for |
 |---|---|
-| Accessibility | Gestures, locking, Find. Looks at which window is in front, at the icon you touch on the home screen and, for Find only, at the icon names there (on Honor also at the Honor Search screen). Content of other apps is not read. |
+| Accessibility | Gestures, locking, Find. Looks at which window is in front, at the icon you touch on the home screen and, for Find only, at the icon names there (on Honor also at the Honor Search screen), and, when turned on, at the system's copy bar to close it. Content of other apps is not read. |
 | Notification access | History, rules, pausing media |
 | Contacts, phone, call log | Contact search, direct calls, recent people (call log only when turned on) |
 | Do Not Disturb access | Sleep mode at home |
 | Location (always) | Only to read the name of the Wi-Fi network; not needed when the network is saved without a name |
 | Usage access | Recently and most used apps |
 | Alarms, notifications | Reminders, sleep timer |
+| Write secure settings (ADB only) | Turning the accessibility service back on after the phone ended the app: `adb shell pm grant dev.yesil.launchsoul android.permission.WRITE_SECURE_SETTINGS` |
 
 ### Privacy
 
@@ -61,7 +63,8 @@ All optional; each one only turns on its own feature.
 
 - Android does not let a touch move from one window to another. Inside an area a page does not follow the finger, and to drag an icon you long press, let go at the vibration, then long press again.
 - Two calls are not part of the public SDK: `StatusBarManager.expandNotificationsPanel` and `expandSettingsPanel`. If they fail, accessibility is used instead.
-- Honor phones need "manage manually" for the app in the battery settings.
+- Honor phones need "manage manually" for the app in the battery settings. When Honor ends the app, Android leaves its accessibility service stopped; the settings show this and turn it back on with one tap, or by themselves with the ADB permission above.
+- The timings and distances of the gestures can be changed under Home screen gestures → Timing and position.
 
 ## Build
 

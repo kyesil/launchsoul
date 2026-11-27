@@ -119,7 +119,8 @@ private fun Rows(list: List<Dest>, go: (String) -> Unit) = Card {
 }
 
 @Composable
-fun MainScreen(go: (String) -> Unit) = Page("Better Launch Soul") {
+fun MainScreen(go: (String) -> Unit, tick: Int = 0) = Page("Better Launch Soul") {
+    HealWarning(tick) { go("permissions") }
     var q by remember { mutableStateOf("") }
     OutlinedTextField(
         q, { q = it }, Modifier.fillMaxWidth().padding(bottom = 10.dp), label = { Text(tx(R.string.settings_search)) }, singleLine = true,
@@ -143,6 +144,8 @@ fun NotificationsScreen(go: (String) -> Unit) = Page(tx(R.string.notifications_g
 @Composable
 fun AutomationScreen(go: (String) -> Unit) = Page(tx(R.string.automation)) {
     Rows(inner.filter { it.screen in setOf("dnd", "reminders", "timer", "log") }, go)
+    val p = LocalContext.current.app.prefs
+    Card { Toggle(tx(R.string.clip_hide), tx(R.string.clip_hide_sub), { p.clipHide }, { p.clipHide = it }) }
 }
 
 /** Where the code is published. */

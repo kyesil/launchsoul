@@ -771,6 +771,9 @@ private fun AppCell(a: AppInfo, q: String, launch: (AppInfo) -> Unit, modifier: 
 /** Search over other apps, for the edge handles. */
 class SearchActivity : ComponentActivity() {
     private val born = android.os.SystemClock.uptimeMillis()
+
+    /** Opened while the phone was still on its way home: only then may its end be what closed it. */
+    private val rescue = dev.yesil.launchsoul.system.SoulAccessibility.instance?.comingHome() == true
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val bar = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
@@ -782,7 +785,8 @@ class SearchActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         // Opened while the phone was still on its way home, whose end put the home screen in front: open once more.
-        val lost = !isFinishing && android.os.SystemClock.uptimeMillis() - born < 800 && !intent.getBooleanExtra("again", false)
+        val lost = rescue && !isFinishing && android.os.SystemClock.uptimeMillis() - born < app.prefs.tRescue &&
+            !intent.getBooleanExtra("again", false)
         finish()
         if (lost) app.main.postDelayed({
             dev.yesil.launchsoul.system.SoulAccessibility.instance?.let {
